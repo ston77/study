@@ -1,110 +1,110 @@
-Ò»¡¢Ê²Ã´ÊÇHibernate 
-HibernateÊÇÇáÁ¿¼¶JavaEEÓ¦ÓÃµÄ³Ö¾Ã²ã½â¾ö·½°¸£¬ÊÇÒ»¸ö¹ØÏµÊı¾İ¿âORM¿ò¼Ü
-*£¨struts2 ÊÇÇáÁ¿¼¶JavaEEÓ¦ÓÃµÄ±íÏÖ²ã½â¾ö·½°¸ £©
+ä¸€ã€ä»€ä¹ˆæ˜¯Hibernate 
+Hibernateæ˜¯è½»é‡çº§JavaEEåº”ç”¨çš„æŒä¹…å±‚è§£å†³æ–¹æ¡ˆï¼Œæ˜¯ä¸€ä¸ªå…³ç³»æ•°æ®åº“ORMæ¡†æ¶
+*ï¼ˆstruts2 æ˜¯è½»é‡çº§JavaEEåº”ç”¨çš„è¡¨ç°å±‚è§£å†³æ–¹æ¡ˆ ï¼‰
 
-Ê²Ã´¹ØÏµĞÍÊı¾İ¿â £¿  MySQL ¡¢Oracle ¡¢SQLServer ¡¢ DB2  Êı¾İ²ÉÓÃ±í·½Ê½´æ´¢µÄ£¬±íÓë±íÖ®¼äÍâ¼ü¹ØÁª
-Ê²Ã´ÊÇ ORM £¿ Object Relational Mapping, ¶ÔÏó¹ØÏµÓ³Éä 
-	ORM ¾ÍÊÇÍ¨¹ı½«Java¶ÔÏóÓ³Éäµ½Êı¾İ¿â±í£¬Í¨¹ı²Ù×÷Java¶ÔÏó£¬¾Í¿ÉÒÔÍê³É¶ÔÊı¾İ±íµÄ²Ù×÷
+ä»€ä¹ˆå…³ç³»å‹æ•°æ®åº“ ï¼Ÿ  MySQL ã€Oracle ã€SQLServer ã€ DB2  æ•°æ®é‡‡ç”¨è¡¨æ–¹å¼å­˜å‚¨çš„ï¼Œè¡¨ä¸è¡¨ä¹‹é—´å¤–é”®å…³è”
+ä»€ä¹ˆæ˜¯ ORM ï¼Ÿ Object Relational Mapping, å¯¹è±¡å…³ç³»æ˜ å°„ 
+	ORM å°±æ˜¯é€šè¿‡å°†Javaå¯¹è±¡æ˜ å°„åˆ°æ•°æ®åº“è¡¨ï¼Œé€šè¿‡æ“ä½œJavaå¯¹è±¡ï¼Œå°±å¯ä»¥å®Œæˆå¯¹æ•°æ®è¡¨çš„æ“ä½œ
 
-Hibernat ÍêÈ«ORMµÄ£¬Ö»ĞèÒª¶Ô ¶ÔÏó½øĞĞ²Ù×÷£¬Éú³Éµ×²ãSQLÓï¾ä £¡£¡£¡£¡£¡
+Hibernat å®Œå…¨ORMçš„ï¼Œåªéœ€è¦å¯¹ å¯¹è±¡è¿›è¡Œæ“ä½œï¼Œç”Ÿæˆåº•å±‚SQLè¯­å¥ ï¼ï¼ï¼ï¼ï¼
 
-*** echo2 ¿ò¼Ü£¨Éú³ÉHTML£© ¡¢ DWR £¨¿ª·¢AJAX£¬Éú³ÉJS´úÂë£©¡¢ Hibernate £¨²Ù×÷Êı¾İ¿âÉú³ÉSQL £©
+*** echo2 æ¡†æ¶ï¼ˆç”ŸæˆHTMLï¼‰ ã€ DWR ï¼ˆå¼€å‘AJAXï¼Œç”ŸæˆJSä»£ç ï¼‰ã€ Hibernate ï¼ˆæ“ä½œæ•°æ®åº“ç”ŸæˆSQL ï¼‰
 
-Á÷ĞĞÊı¾İ¿â¿ò¼Ü 
-1¡¢ JPA Java Persistence API  Í¨¹ı×¢½âÃèÊö¶ÔÏóÓëÊı¾İ±íÓ³Éä¹ØÏµ £¨Ö»ÓĞ½Ó¿Ú¹æ·¶£©
-2¡¢ Hibernate ×îÁ÷ĞĞORM¿ò¼Ü£¬Í¨¹ı¶ÔÏó-¹ØÏµÓ³ÉäÅäÖÃ£¬¿ÉÒÔÍêÈ«ÍÑÀëµ×²ãSQL £¬ HibernateÊµÏÖJPA¹æ·¶ 
-3¡¢ MyBatis  ±¾ÊÇapacheµÄÒ»¸ö¿ªÔ´ÏîÄ¿ iBatis£¬Ö§³ÖÆÕÍ¨ SQL²éÑ¯£¬´æ´¢¹ı³ÌºÍ¸ß¼¶Ó³ÉäµÄÓÅĞã³Ö¾Ã²ã¿ò¼Ü £¨ÆóÒµÖ÷Á÷£©
-	* MyBaits ²¢²»ÊÇÍêÈ«ORM £¬ ĞèÒªÔÚxmlÖĞÅäÖÃSQLÓï¾ä
-4¡¢ Apache DBUtils ¡¢Spring JDBCTemplate
+æµè¡Œæ•°æ®åº“æ¡†æ¶ 
+1ã€ JPA Java Persistence API  é€šè¿‡æ³¨è§£æè¿°å¯¹è±¡ä¸æ•°æ®è¡¨æ˜ å°„å…³ç³» ï¼ˆåªæœ‰æ¥å£è§„èŒƒï¼‰
+2ã€ Hibernate æœ€æµè¡ŒORMæ¡†æ¶ï¼Œé€šè¿‡å¯¹è±¡-å…³ç³»æ˜ å°„é…ç½®ï¼Œå¯ä»¥å®Œå…¨è„±ç¦»åº•å±‚SQL ï¼Œ Hibernateå®ç°JPAè§„èŒƒ 
+3ã€ MyBatis  æœ¬æ˜¯apacheçš„ä¸€ä¸ªå¼€æºé¡¹ç›® iBatisï¼Œæ”¯æŒæ™®é€š SQLæŸ¥è¯¢ï¼Œå­˜å‚¨è¿‡ç¨‹å’Œé«˜çº§æ˜ å°„çš„ä¼˜ç§€æŒä¹…å±‚æ¡†æ¶ ï¼ˆä¼ä¸šä¸»æµï¼‰
+	* MyBaits å¹¶ä¸æ˜¯å®Œå…¨ORM ï¼Œ éœ€è¦åœ¨xmlä¸­é…ç½®SQLè¯­å¥
+4ã€ Apache DBUtils ã€Spring JDBCTemplate
 
-SQLÓï¾ä·â×°³Ì¶È Hibernate > MyBatis > 	Apache DBUtils ¡¢Spring JDBCTemplate
+SQLè¯­å¥å°è£…ç¨‹åº¦ Hibernate > MyBatis > 	Apache DBUtils ã€Spring JDBCTemplate
 
-¶ş¡¢ ÎªÊ²Ã´ÒªÊ¹ÓÃHibernate 
-Hibernate¶ÔJDBC·ÃÎÊÊı¾İ¿âµÄ´úÂë×öÁË·â×°£¬´ó´ó¼ò»¯ÁËÊı¾İ·ÃÎÊ²ã·±ËöµÄÖØ¸´ĞÔ´úÂë
-HibernateÊÇÒ»¸ö»ùÓÚjdbcµÄÖ÷Á÷³Ö¾Ã»¯¿ò¼Ü£¬ÊÇÒ»¸öÓÅĞãµÄormÊµÏÖ£¬ËüºÜ´ó³Ì¶ÈµÄ¼ò»¯ÁËdao²ã±àÂë¹¤×÷
-HibernateÊ¹ÓÃjavaµÄ·´Éä»úÖÆ£¬¶ø²»ÊÇ×Ö½ÚÂëÔöÇ¿³ÌĞòÀàÊµÏÖÍ¸Ã÷ĞÔ
-HibernateµÄĞÔÄÜ·Ç³£ºÃ£¬ÒòÎªËüÊÇÒ»¸öÇáÁ¿¼¶¿ò¼Ü¡£Ó³ÉäµÄÁé»îĞÔºÜ³öÉ«¡£ËüÖ§³ÖºÜ¶à¹ØÏµĞÍÊı¾İ¿â£¬´ÓÒ»¶ÔÒ»µ½¶à¶Ô¶àµÄ¸÷ÖÖ¸´ÔÓ¹ØÏµ
-   * Hibernate±¾ÉíĞÔÄÜ²¢²»ÊÇºÜºÃ£¬´æÔÚºÜ¶àÓÅ»¯ÊÖ¶Î £¨Ò»¼¶»º´æ¡¢¶ş¼¶»º´æ¡¢²éÑ¯»º´æ¡¢×¥È¡²ßÂÔ£©
+äºŒã€ ä¸ºä»€ä¹ˆè¦ä½¿ç”¨Hibernate 
+Hibernateå¯¹JDBCè®¿é—®æ•°æ®åº“çš„ä»£ç åšäº†å°è£…ï¼Œå¤§å¤§ç®€åŒ–äº†æ•°æ®è®¿é—®å±‚ç¹ççš„é‡å¤æ€§ä»£ç 
+Hibernateæ˜¯ä¸€ä¸ªåŸºäºjdbcçš„ä¸»æµæŒä¹…åŒ–æ¡†æ¶ï¼Œæ˜¯ä¸€ä¸ªä¼˜ç§€çš„ormå®ç°ï¼Œå®ƒå¾ˆå¤§ç¨‹åº¦çš„ç®€åŒ–äº†daoå±‚ç¼–ç å·¥ä½œ
+Hibernateä½¿ç”¨javaçš„åå°„æœºåˆ¶ï¼Œè€Œä¸æ˜¯å­—èŠ‚ç å¢å¼ºç¨‹åºç±»å®ç°é€æ˜æ€§
+Hibernateçš„æ€§èƒ½éå¸¸å¥½ï¼Œå› ä¸ºå®ƒæ˜¯ä¸€ä¸ªè½»é‡çº§æ¡†æ¶ã€‚æ˜ å°„çš„çµæ´»æ€§å¾ˆå‡ºè‰²ã€‚å®ƒæ”¯æŒå¾ˆå¤šå…³ç³»å‹æ•°æ®åº“ï¼Œä»ä¸€å¯¹ä¸€åˆ°å¤šå¯¹å¤šçš„å„ç§å¤æ‚å…³ç³»
+   * Hibernateæœ¬èº«æ€§èƒ½å¹¶ä¸æ˜¯å¾ˆå¥½ï¼Œå­˜åœ¨å¾ˆå¤šä¼˜åŒ–æ‰‹æ®µ ï¼ˆä¸€çº§ç¼“å­˜ã€äºŒçº§ç¼“å­˜ã€æŸ¥è¯¢ç¼“å­˜ã€æŠ“å–ç­–ç•¥ï¼‰
   
 
-Èı¡¢ Ê¹ÓÃHibernate¿ò¼Ü ¿ìËÙÈëÃÅ 
-1¡¢ È¥ http://sourceforge.net/projects/hibernate/files/hibernate3/ ÏÂÔØ hibernate3 ¿ª·¢°ü 
-hibernate ÊÇ JBOSS ¿ò¼Ü£¬ JBOSS ÊÇ EJB·şÎñÆ÷£¬ JBOSS ÍÆ³öJBPM ¹¤×÷Á÷ 
-ÆóÒµÖ÷Á÷ Hibernate °æ±¾ : hibernate3.x 
-¿Î³ÌÒÔ hibernate3.6.10 ½²½â 
+ä¸‰ã€ ä½¿ç”¨Hibernateæ¡†æ¶ å¿«é€Ÿå…¥é—¨ 
+1ã€ å» http://sourceforge.net/projects/hibernate/files/hibernate3/ ä¸‹è½½ hibernate3 å¼€å‘åŒ… 
+hibernate æ˜¯ JBOSS æ¡†æ¶ï¼Œ JBOSS æ˜¯ EJBæœåŠ¡å™¨ï¼Œ JBOSS æ¨å‡ºJBPM å·¥ä½œæµ 
+ä¼ä¸šä¸»æµ Hibernate ç‰ˆæœ¬ : hibernate3.x 
+è¯¾ç¨‹ä»¥ hibernate3.6.10 è®²è§£ 
 
-×îĞÂhibernate°æ±¾ 4.3²âÊÔ°æ£¬ hibernate4 ºÍ hibernate3 ¿ª·¢ÓĞºÜ¶à²»Í¬ 
+æœ€æ–°hibernateç‰ˆæœ¬ 4.3æµ‹è¯•ç‰ˆï¼Œ hibernate4 å’Œ hibernate3 å¼€å‘æœ‰å¾ˆå¤šä¸åŒ 
 
-***** hibernate »¹ÓĞºÜ¶àÀ©Õ¹¼¼Êõ search ¡¢ validator  .... 
+***** hibernate è¿˜æœ‰å¾ˆå¤šæ‰©å±•æŠ€æœ¯ search ã€ validator  .... 
 
-ÏÂÔØ hibernate-distribution-3.6.10.Final-dist.zip 
+ä¸‹è½½ hibernate-distribution-3.6.10.Final-dist.zip 
 
-2¡¢ Ä¿Â¼½á¹¹ 
-documentation £ºÎÄµµ
-lib £º ¿ª·¢jar°ü
-project £º hibernateÔ´Âë
+2ã€ ç›®å½•ç»“æ„ 
+documentation ï¼šæ–‡æ¡£
+lib ï¼š å¼€å‘jaråŒ…
+project ï¼š hibernateæºç 
 
-hibernate3.jar £º hibernate¿ò¼Ü¿ª·¢ºËĞÄjar°ü 
+hibernate3.jar ï¼š hibernateæ¡†æ¶å¼€å‘æ ¸å¿ƒjaråŒ… 
 
-3¡¢ µ¼Èëjar°ü 
-hibernate3.jar ºËĞÄjar°ü
+3ã€ å¯¼å…¥jaråŒ… 
+hibernate3.jar æ ¸å¿ƒjaråŒ…
 lib/required/*.jar 
-lib/jpa/hibernate-jpa-2.0-api-1.0.1.Final.jar  (ÓÃÓÚjpa×¢½â¿ª·¢£¬web¿ª·¢)
-Êı¾İ¿âÇı¶¯ mysqlÇı¶¯
+lib/jpa/hibernate-jpa-2.0-api-1.0.1.Final.jar  (ç”¨äºjpaæ³¨è§£å¼€å‘ï¼Œwebå¼€å‘)
+æ•°æ®åº“é©±åŠ¨ mysqlé©±åŠ¨
 
 =====================================================================================================
-hibernate 3.x°æ±¾ Ä¬ÈÏ²ÉÓÃÈÕÖ¾¼¼Êõ slf4j (¼´¼òµ¥ÈÕÖ¾ÃÅÃæ£¨SimpleLoggingFacadeforJava£©) ,²»ÊÇ¾ßÌåµÄÈÕÖ¾½â¾ö·½°¸£¬ËüÖ»·şÎñÓÚ¸÷ÖÖ¸÷ÑùµÄÈÕÖ¾ÏµÍ³¡£ 
-*  Ê¹ÓÃslf4j ºÃ´¦£¬ºÜÈİÒ×ÕûºÏÆäËûÈÕÖ¾¼¼Êõ 
+hibernate 3.xç‰ˆæœ¬ é»˜è®¤é‡‡ç”¨æ—¥å¿—æŠ€æœ¯ slf4j (å³ç®€å•æ—¥å¿—é—¨é¢ï¼ˆSimpleLoggingFacadeforJavaï¼‰) ,ä¸æ˜¯å…·ä½“çš„æ—¥å¿—è§£å†³æ–¹æ¡ˆï¼Œå®ƒåªæœåŠ¡äºå„ç§å„æ ·çš„æ—¥å¿—ç³»ç»Ÿã€‚ 
+*  ä½¿ç”¨slf4j å¥½å¤„ï¼Œå¾ˆå®¹æ˜“æ•´åˆå…¶ä»–æ—¥å¿—æŠ€æœ¯ 
 
-ÆóÒµjava¿ª·¢ ×îÖ÷Á÷ÈÕÖ¾¼¼Êõ log4j 
+ä¼ä¸šjavaå¼€å‘ æœ€ä¸»æµæ—¥å¿—æŠ€æœ¯ log4j 
 
-slf4j-api-1.6.1.jar Ã»ÓĞÈÕÖ¾ÊµÏÖ£¬Ö»ÊÇ½Ó¿Ú£¬ÕûºÏlog4j 
+slf4j-api-1.6.1.jar æ²¡æœ‰æ—¥å¿—å®ç°ï¼Œåªæ˜¯æ¥å£ï¼Œæ•´åˆlog4j 
 
-µ¼Èë slf4j-log4j12-1.7.2.jar  £¨slf4j¶Ôlog4j ¿ò¼ÜÕûºÏ £©
-µ¼Èë log4j-1.2.16.jar  £¨log4jµÄÈÕÖ¾jar°ü £©
+å¯¼å…¥ slf4j-log4j12-1.7.2.jar  ï¼ˆslf4jå¯¹log4j æ¡†æ¶æ•´åˆ ï¼‰
+å¯¼å…¥ log4j-1.2.16.jar  ï¼ˆlog4jçš„æ—¥å¿—jaråŒ… ï¼‰
 
 ======================================================================================================
-log4j ÊÇÆóÒµÖ÷Á÷ÈÕÖ¾¼¼Êõ  £¬ÊÇApache¹«Ë¾Ìá¹©µÄ 
-1£© Ê²Ã´ÊÇÈÕÖ¾¼¼Êõ£¬¿ª·¢ÖĞÎªÊ²Ã´ÒªÓÃÈÕÖ¾¼¼Êõ  
-ÈÕÖ¾ £º ÔÚÏµÍ³ÔËĞĞ¹ı³ÌÖĞ£¬¼ÇÂ¼¹Ø¼üĞÅÏ¢£¬¼ÇÂ¼´íÎóÒì³£ĞÅÏ¢µÄ¼¼Êõ 
-   *  Çø·Ö System.out ºÍ ÈÕÖ¾¼¼Êõ 
-   *  System.out Ïò¿ØÖÆÌ¨ÊäÈëĞÅÏ¢£¬Ò»¶¨Êä³ö
-   *  ÈÕÖ¾¼¼Êõ ´æÔÚ¼¶±ğ£¬Í¨¹ı¼¶±ğ¿ØÖÆÈÕÖ¾ÊÇ·ñÊä³ö£¬Êä³öµÄÏêÏ¸³Ì¶È£¬ Êä³öµÄÄ¿µÄµØ£¨¿ØÖÆÌ¨¡¢ÎÄ¼ş¡¢·¢ËÍÓÊ¼ş£©
+log4j æ˜¯ä¼ä¸šä¸»æµæ—¥å¿—æŠ€æœ¯  ï¼Œæ˜¯Apacheå…¬å¸æä¾›çš„ 
+1ï¼‰ ä»€ä¹ˆæ˜¯æ—¥å¿—æŠ€æœ¯ï¼Œå¼€å‘ä¸­ä¸ºä»€ä¹ˆè¦ç”¨æ—¥å¿—æŠ€æœ¯  
+æ—¥å¿— ï¼š åœ¨ç³»ç»Ÿè¿è¡Œè¿‡ç¨‹ä¸­ï¼Œè®°å½•å…³é”®ä¿¡æ¯ï¼Œè®°å½•é”™è¯¯å¼‚å¸¸ä¿¡æ¯çš„æŠ€æœ¯ 
+   *  åŒºåˆ† System.out å’Œ æ—¥å¿—æŠ€æœ¯ 
+   *  System.out å‘æ§åˆ¶å°è¾“å…¥ä¿¡æ¯ï¼Œä¸€å®šè¾“å‡º
+   *  æ—¥å¿—æŠ€æœ¯ å­˜åœ¨çº§åˆ«ï¼Œé€šè¿‡çº§åˆ«æ§åˆ¶æ—¥å¿—æ˜¯å¦è¾“å‡ºï¼Œè¾“å‡ºçš„è¯¦ç»†ç¨‹åº¦ï¼Œ è¾“å‡ºçš„ç›®çš„åœ°ï¼ˆæ§åˆ¶å°ã€æ–‡ä»¶ã€å‘é€é‚®ä»¶ï¼‰
 
-Ê¹ÓÃÈÕÖ¾£º Ö÷ÒªÓÃÓÚ¿ª·¢¹ı³ÌÖĞµ÷ÊÔ ºÍ ÏîÄ¿ÉÏÏßºóµÄÎ¬»¤£¨¼ÇÂ¼bug£©
+ä½¿ç”¨æ—¥å¿—ï¼š ä¸»è¦ç”¨äºå¼€å‘è¿‡ç¨‹ä¸­è°ƒè¯• å’Œ é¡¹ç›®ä¸Šçº¿åçš„ç»´æŠ¤ï¼ˆè®°å½•bugï¼‰
 
-2£© Ê¹ÓÃlog4j Í¨¹ıÅäÖÃÎÄ¼ş £¬ÅäÖÃÈÕÖ¾¿ò¼ÜÊ¹ÓÃ 
+2ï¼‰ ä½¿ç”¨log4j é€šè¿‡é…ç½®æ–‡ä»¶ ï¼Œé…ç½®æ—¥å¿—æ¡†æ¶ä½¿ç”¨ 
 	src/log4j.xml
-	src/log4j.properties (¼òµ¥)
+	src/log4j.properties (ç®€å•)
 
-ÅäÖÃlog4j.properties ÓĞÈı¸ö×é¼ş 
-   ×é¼şÒ»£º ¼ÇÂ¼Æ÷£¨Loggers£©  ÓÃÀ´ÅäÖÃÈÕÖ¾Êä³ö¼¶±ğ£¬Ê¹ÓÃÄÄĞ©Êä³öÔ´  ¸ñÊ½£º ¼ÇÂ¼Æ÷Ãû = ¼¶±ğ, Êä³öÔ´1 , Êä³öÔ´2 ... 
-		* Ò»¸ö¼ÇÂ¼Æ÷ Ö¸¶¨ ¶à¸öÊä³öÔ´ 
-		log4j.rootLogger=info, stdout    infoÊÇÈÕÖ¾¼¶±ğ £¬ stdoutÊÇÊä³öÔ´Ãû³Æ 
-		* log4jÌá¹©ÈÕÖ¾¼¶±ğ ÓÉ¸ßµ½µÍ £ºfatal(ÖÂÃü´íÎó), error(ÆÕÍ¨´íÎó), warn(¾¯¸æ),info(ĞÅÏ¢), debug(µ÷ÊÔ), trace(¶ÑÕ» )
-		* log4j¼ÇÂ¼ÈÕÖ¾Ê±£¬Ö»»á¼ÇÂ¼ ÅäÖÃ¼¶±ğ¸ü¸ß¼¶±ğµÄĞÅÏ¢ 
-   ×é¼ş¶ş £º Êä³öÔ´£¨Appenders£© ÔÚlog4jÖĞ¿ÉÒÔ¶¨Òå¶à¸öÊä³öÔ´ £¨¿ØÖÆÌ¨¡¢ÈÕÖ¾ÎÄ¼ş¡¢ÓÊ¼ş¡¢Êı¾İ¿â £©
-		* log4j.appender.Êä³öÔ´Ãû³Æ = ÊµÏÖÀà 
-		log4j.appender.stdout=org.apache.log4j.ConsoleAppender Ïò¿ØÖÆÌ¨Êä³ö 
-		log4j.appender.file=org.apache.log4j.FileAppender ÏòÎÄ¼şÊä³ö 
-	×é¼şÈı £º ²¼¾Ö£¨Layouts£© ÔÚÈÕÖ¾ÖĞ¶¼¼ÇÂ¼ÄÄĞ©ĞÅÏ¢ 
-		log4j.appender.stdout.layout=org.apache.log4j.PatternLayout ×Ô¶¨Òå²¼¾Ö
-		log4j.appender.stdout.layout.ConversionPattern=%d{ABSOLUTE} %5p %c{1}:%L - %m%n  ×Ô¶¨Òå²¼¾Ö¸ñÊ½ 
+é…ç½®log4j.properties æœ‰ä¸‰ä¸ªç»„ä»¶ 
+   ç»„ä»¶ä¸€ï¼š è®°å½•å™¨ï¼ˆLoggersï¼‰  ç”¨æ¥é…ç½®æ—¥å¿—è¾“å‡ºçº§åˆ«ï¼Œä½¿ç”¨å“ªäº›è¾“å‡ºæº  æ ¼å¼ï¼š è®°å½•å™¨å = çº§åˆ«, è¾“å‡ºæº1 , è¾“å‡ºæº2 ... 
+		* ä¸€ä¸ªè®°å½•å™¨ æŒ‡å®š å¤šä¸ªè¾“å‡ºæº 
+		log4j.rootLogger=info, stdout    infoæ˜¯æ—¥å¿—çº§åˆ« ï¼Œ stdoutæ˜¯è¾“å‡ºæºåç§° 
+		* log4jæä¾›æ—¥å¿—çº§åˆ« ç”±é«˜åˆ°ä½ ï¼šfatal(è‡´å‘½é”™è¯¯), error(æ™®é€šé”™è¯¯), warn(è­¦å‘Š),info(ä¿¡æ¯), debug(è°ƒè¯•), trace(å †æ ˆ )
+		* log4jè®°å½•æ—¥å¿—æ—¶ï¼Œåªä¼šè®°å½• é…ç½®çº§åˆ«æ›´é«˜çº§åˆ«çš„ä¿¡æ¯ 
+   ç»„ä»¶äºŒ ï¼š è¾“å‡ºæºï¼ˆAppendersï¼‰ åœ¨log4jä¸­å¯ä»¥å®šä¹‰å¤šä¸ªè¾“å‡ºæº ï¼ˆæ§åˆ¶å°ã€æ—¥å¿—æ–‡ä»¶ã€é‚®ä»¶ã€æ•°æ®åº“ ï¼‰
+		* log4j.appender.è¾“å‡ºæºåç§° = å®ç°ç±» 
+		log4j.appender.stdout=org.apache.log4j.ConsoleAppender å‘æ§åˆ¶å°è¾“å‡º 
+		log4j.appender.file=org.apache.log4j.FileAppender å‘æ–‡ä»¶è¾“å‡º 
+	ç»„ä»¶ä¸‰ ï¼š å¸ƒå±€ï¼ˆLayoutsï¼‰ åœ¨æ—¥å¿—ä¸­éƒ½è®°å½•å“ªäº›ä¿¡æ¯ 
+		log4j.appender.stdout.layout=org.apache.log4j.PatternLayout è‡ªå®šä¹‰å¸ƒå±€
+		log4j.appender.stdout.layout.ConversionPattern=%d{ABSOLUTE} %5p %c{1}:%L - %m%n  è‡ªå®šä¹‰å¸ƒå±€æ ¼å¼ 
 
-3£©¡¢ ÔÚ³ÌĞòÖĞÊ¹ÓÃlog4j ¼ÇÂ¼ÈÕÖ¾ 
-	²½ÖèÒ» £º¶¨Òå¼ÇÂ¼Æ÷ 
+3ï¼‰ã€ åœ¨ç¨‹åºä¸­ä½¿ç”¨log4j è®°å½•æ—¥å¿— 
+	æ­¥éª¤ä¸€ ï¼šå®šä¹‰è®°å½•å™¨ 
 		private static final Logger LOG = Logger.getLogger(Log4jTest.class);
-	²½Öè¶ş £ºÊ¹ÓÃ log4jÌá¹©Ã¿¸ö¼¶±ğ·½·¨ ¼ÇÂ¼ÈÕÖ¾ 
-		LOG.fatal("ÖÂÃü´íÎó");
-		LOG.error("ÆÕÍ¨´íÎó");
-		LOG.warn("¾¯¸æĞÅÏ¢");
-		LOG.info("ÆÕÍ¨ĞÅÏ¢");
-		LOG.debug("µ÷ÊÔĞÅÏ¢");
-		LOG.trace("¶ÑÕ»ĞÅÏ¢");
-	* ³£ÓÃ £º error¡¢warn¡¢info¡¢debug
+	æ­¥éª¤äºŒ ï¼šä½¿ç”¨ log4jæä¾›æ¯ä¸ªçº§åˆ«æ–¹æ³• è®°å½•æ—¥å¿— 
+		LOG.fatal("è‡´å‘½é”™è¯¯");
+		LOG.error("æ™®é€šé”™è¯¯");
+		LOG.warn("è­¦å‘Šä¿¡æ¯");
+		LOG.info("æ™®é€šä¿¡æ¯");
+		LOG.debug("è°ƒè¯•ä¿¡æ¯");
+		LOG.trace("å †æ ˆä¿¡æ¯");
+	* å¸¸ç”¨ ï¼š errorã€warnã€infoã€debug
 
 =============================================================================================================================
-4¡¢ ±àĞ´Êı¾İ±íºÍ ÊµÌåÀà 
+4ã€ ç¼–å†™æ•°æ®è¡¨å’Œ å®ä½“ç±» 
 create table customer(
     id int primary key auto_increment,
 	name varchar(20),
@@ -120,98 +120,96 @@ public class Customer {
 	...
 }	
 
-hibernate ÍêÈ«ORM£¬Ö»ĞèÒª²Ù×÷CustomerÀà¶ÔÏó£¬ ×Ô¶¯Éú³ÉSQL ²Ù×÷customer ±í 
-* ĞèÒªÎª ÊµÌåÀà ºÍ Êı¾İ±í ½øĞĞ¹ØÏµÓ³ÉäÅäÖÃ 
-	1£© ÔÚÀàËùÓĞ°ü£¬´´½¨ ÀàÃû.hbm.xml ÎÄ¼ş   £¨Customer.hbm.xml £©
-	2£© hibernate3.jar org/hibernate/hibernate-mapping-3.0.dtd
-		ÅäÖÃÊôĞÔµ½ÁĞÓ³ÉäÊ±£¬Ö¸¶¨ÀàĞÍ£¬ÀàĞÍÓĞÈıÖÖĞ´·¨
-			µÚÒ»ÖÖ javaÀàĞÍ  java.lang.String
-			µÚ¶şÖÖ hibernateÀàĞÍ string
-			µÚÈıÖÖ SQLÀàĞÍ varchar(20)
+hibernate å®Œå…¨ORMï¼Œåªéœ€è¦æ“ä½œCustomerç±»å¯¹è±¡ï¼Œ è‡ªåŠ¨ç”ŸæˆSQL æ“ä½œcustomer è¡¨ 
+* éœ€è¦ä¸º å®ä½“ç±» å’Œ æ•°æ®è¡¨ è¿›è¡Œå…³ç³»æ˜ å°„é…ç½® 
+	1ï¼‰ åœ¨ç±»æ‰€æœ‰åŒ…ï¼Œåˆ›å»º ç±»å.hbm.xml æ–‡ä»¶   ï¼ˆCustomer.hbm.xml ï¼‰
+	2ï¼‰ hibernate3.jar org/hibernate/hibernate-mapping-3.0.dtd
+		é…ç½®å±æ€§åˆ°åˆ—æ˜ å°„æ—¶ï¼ŒæŒ‡å®šç±»å‹ï¼Œç±»å‹æœ‰ä¸‰ç§å†™æ³•
+			ç¬¬ä¸€ç§ javaç±»å‹  java.lang.String
+			ç¬¬äºŒç§ hibernateç±»å‹ string
+			ç¬¬ä¸‰ç§ SQLç±»å‹ varchar(20)
 	
-5¡¢ÅäÖÃhibernateºËĞÄÅäÖÃÎÄ¼ş 
-	ÔÚsrcÏÂ´´½¨ hibernate.cfg.xml
-	¹æÔò²Î¼û hibernate3.jar /org/hibernate/hibernate-configuration-3.0.dtd	
+5ã€é…ç½®hibernateæ ¸å¿ƒé…ç½®æ–‡ä»¶ 
+	åœ¨srcä¸‹åˆ›å»º hibernate.cfg.xml
+	è§„åˆ™å‚è§ hibernate3.jar /org/hibernate/hibernate-configuration-3.0.dtd	
 
-ÅäÖÃhibernate»ù±¾ÊôĞÔ£¬²Î¿¼ ½âÑ¹Ä¿Â¼/project/etc/hibernate.properties 
-	1) JDBCÁ¬½ÓÊôĞÔ
-	2£©Êı¾İ¿â·½ÑÔ
-	3£©ÆäËüÊôĞÔ
-	4£©¼ÓÔØhbmÓ³ÉäÎÄ¼ş 
+é…ç½®hibernateåŸºæœ¬å±æ€§ï¼Œå‚è€ƒ è§£å‹ç›®å½•/project/etc/hibernate.properties 
+	1) JDBCè¿æ¥å±æ€§
+	2ï¼‰æ•°æ®åº“æ–¹è¨€
+	3ï¼‰å…¶å®ƒå±æ€§
+	4ï¼‰åŠ è½½hbmæ˜ å°„æ–‡ä»¶ 
 	
-6¡¢ ±à³Ì²Ù×÷hibernate¿ò¼Ü£¨Ä£°å£©
-// ÊµÀı»¯ÅäÖÃ¶ÔÏó£¬¼ÓÔØÅäÖÃÎÄ¼ş hibernate.cfg.xml
+6ã€ ç¼–ç¨‹æ“ä½œhibernateæ¡†æ¶ï¼ˆæ¨¡æ¿ï¼‰
+// å®ä¾‹åŒ–é…ç½®å¯¹è±¡ï¼ŒåŠ è½½é…ç½®æ–‡ä»¶ hibernate.cfg.xml
 Configuration configuration = new Configuration().configure();
-// ´´½¨»á»°Á¬½Ó¹¤³§
+// åˆ›å»ºä¼šè¯è¿æ¥å·¥å‚
 SessionFactory sessionFactory = configuration.buildSessionFactory();
-// ´´½¨»á»°	
+// åˆ›å»ºä¼šè¯	
 Session session = sessionFactory.openSession();
-// ¿ªÆôÊÂÎñ
+// å¼€å¯äº‹åŠ¡
 Transaction transaction = session.beginTransaction();
-...  ÕâÀï¿ÉÒÔ±àĞ´hibernate²Ù×÷´úÂëÂß¼­ £¨********************************************************£©
-// Ìá½»ÊÂÎñ£¬ÊÍ·Å×ÊÔ´		
+...  è¿™é‡Œå¯ä»¥ç¼–å†™hibernateæ“ä½œä»£ç é€»è¾‘ ï¼ˆ********************************************************ï¼‰
+// æäº¤äº‹åŠ¡ï¼Œé‡Šæ”¾èµ„æº		
 transaction.commit();
 session.close();
 sessionFactory.close();
 
-7¡¢ Íê³Écustomer±íÔöÉ¾¸Ä²é²Ù×÷ 
-	1£© Ê¹ÓÃ session¶ÔÏó save·½·¨ Íê³É insert ²Ù×÷
+7ã€ å®Œæˆcustomerè¡¨å¢åˆ æ”¹æŸ¥æ“ä½œ 
+	1ï¼‰ ä½¿ç”¨ sessionå¯¹è±¡ saveæ–¹æ³• å®Œæˆ insert æ“ä½œ
 		session.save(customer);
-	2£© Ê¹ÓÃ session¶ÔÏó get»òÕßload  Íê³É¸ù¾İ id ²éÑ¯
+	2ï¼‰ ä½¿ç”¨ sessionå¯¹è±¡ getæˆ–è€…load  å®Œæˆæ ¹æ® id æŸ¥è¯¢
 		(Customer) session.get(Customer.class, id);
-	3£© Ê¹ÓÃsession¶ÔÏó update·½·¨ Íê³É ĞŞ¸Ä²Ù×÷
-		session.update(customer); ¸ù¾İidĞŞ¸ÄÆäËüËùÓĞ×Ö¶ÎÄÚÈİ £¨·ÀÖ¹ĞŞ¸ÄÎªnullµÄÇé¿ö£©
-	4£© Ê¹ÓÃsession¶ÔÏó delete·½·¨ Íê³É É¾³ı²Ù×÷ 
-		session.delete(customer); ¸ù¾İidÉ¾³ı 
-	5)  ²éÑ¯ËùÓĞÊı¾İ 
-		Session¶ÔÏóÌá¹©ÁËÁ½¸ö·½·¨¿ÉÒÔ»ñµÃQuery¶ÔÏó --- Íê³É²éÑ¯
-			Query createQuery(String queryString)  ½ÓÊÜHQL
-			SQLQuery createSQLQuery(String queryString)  ½ÓÊÜSQL
-	* createQuery ·µ»ØQuery¶ÔÏó£¬½ÓÊÕHQL²éÑ¯ÓïÑÔ £¨Hibernate Query Language £© ---- Óï·¨ÀàËÆSQL£¬ÃæÏòÀàºÍÊôĞÔµÄ²éÑ¯ 
-	* Ê¹ÓÃHQL²éÑ¯£¬ÃæÏòÀàºÍÊôĞÔ£¬Éú³Éµ×²ãSQL ·µ»Ø½á¹û ·â×°Àà¶ÔÏóÖĞ
-	* Ê¹ÓÃSQL²éÑ¯£¬ÃæÏòÊı¾İ±í£¬SQLÎŞĞèÉú³É£¬Ä¬ÈÏ·µ»Ø½á¹û Ã¿Ìõ¼ÇÂ¼ Object[] ------- Í¨¹ı addEntity(Customer.class) Ö¸¶¨½«·µ»ØÊı¾İ·â×°¶ÔÏó
+	3ï¼‰ ä½¿ç”¨sessionå¯¹è±¡ updateæ–¹æ³• å®Œæˆ ä¿®æ”¹æ“ä½œ
+		session.update(customer); æ ¹æ®idä¿®æ”¹å…¶å®ƒæ‰€æœ‰å­—æ®µå†…å®¹ ï¼ˆé˜²æ­¢ä¿®æ”¹ä¸ºnullçš„æƒ…å†µï¼‰
+	4ï¼‰ ä½¿ç”¨sessionå¯¹è±¡ deleteæ–¹æ³• å®Œæˆ åˆ é™¤æ“ä½œ 
+		session.delete(customer); æ ¹æ®idåˆ é™¤ 
+	5)  æŸ¥è¯¢æ‰€æœ‰æ•°æ® 
+		Sessionå¯¹è±¡æä¾›äº†ä¸¤ä¸ªæ–¹æ³•å¯ä»¥è·å¾—Queryå¯¹è±¡ --- å®ŒæˆæŸ¥è¯¢
+			Query createQuery(String queryString)  æ¥å—HQL
+			SQLQuery createSQLQuery(String queryString)  æ¥å—SQL
+	* createQuery è¿”å›Queryå¯¹è±¡ï¼Œæ¥æ”¶HQLæŸ¥è¯¢è¯­è¨€ ï¼ˆHibernate Query Language ï¼‰ ---- è¯­æ³•ç±»ä¼¼SQLï¼Œé¢å‘ç±»å’Œå±æ€§çš„æŸ¥è¯¢ 
+	* ä½¿ç”¨HQLæŸ¥è¯¢ï¼Œé¢å‘ç±»å’Œå±æ€§ï¼Œç”Ÿæˆåº•å±‚SQL è¿”å›ç»“æœ å°è£…ç±»å¯¹è±¡ä¸­
+	* ä½¿ç”¨SQLæŸ¥è¯¢ï¼Œé¢å‘æ•°æ®è¡¨ï¼ŒSQLæ— éœ€ç”Ÿæˆï¼Œé»˜è®¤è¿”å›ç»“æœ æ¯æ¡è®°å½• Object[] ------- é€šè¿‡ addEntity(Customer.class) æŒ‡å®šå°†è¿”å›æ•°æ®å°è£…å¯¹è±¡
 
 ==========================================================================================================================
-¶ş¡¢ Hibernate ºËĞÄÅäÖÃ ºÍ ºËĞÄAPI 
-1¡¢ hibernateÌåÏµ½á¹¹ 
-hibernate Î»ÓÚÓ¦ÓÃ³ÌĞò ºÍ Êı¾İ¿â Ö®¼ä £¬½«Êı¾İ¿âµ×²ã ÍêÈ«·â×°£¬ Ó¦ÓÃ³ÌĞòÖ»ĞèÒª²Ù×÷ Persistent Objects £¨³Ö¾Ã»¯¶ÔÏó£©£¬Í¨¹ıHibernateÉú³ÉSQLÓï¾ä£¬Íê³É¶Ô Êı¾İ±íÖĞ¼ÇÂ¼µÄ²Ù×÷ 
+äºŒã€ Hibernate æ ¸å¿ƒé…ç½® å’Œ æ ¸å¿ƒAPI 
+1ã€ hibernateä½“ç³»ç»“æ„ 
+hibernate ä½äºåº”ç”¨ç¨‹åº å’Œ æ•°æ®åº“ ä¹‹é—´ ï¼Œå°†æ•°æ®åº“åº•å±‚ å®Œå…¨å°è£…ï¼Œ åº”ç”¨ç¨‹åºåªéœ€è¦æ“ä½œ Persistent Objects ï¼ˆæŒä¹…åŒ–å¯¹è±¡ï¼‰ï¼Œé€šè¿‡Hibernateç”ŸæˆSQLè¯­å¥ï¼Œå®Œæˆå¯¹ æ•°æ®è¡¨ä¸­è®°å½•çš„æ“ä½œ 
 
-hibernate Ö§³ÖÁ½ÖÖºËĞÄÅäÖÃÎÄ¼ş 
-	src/hibernate.properties (key-valueÎÄ¼ş ¼üÖµ¶Ô£¬Ö÷ÒªÅäÖÃ hibernate»ù±¾ÊôĞÔ )
+hibernate æ”¯æŒä¸¤ç§æ ¸å¿ƒé…ç½®æ–‡ä»¶ 
+	src/hibernate.properties (key-valueæ–‡ä»¶ é”®å€¼å¯¹ï¼Œä¸»è¦é…ç½® hibernateåŸºæœ¬å±æ€§ )
 		hibernate.connection.driver_class=com.mysql.jdbc.Driver
-	src/hibernate.cfg.xml (Íê³É»ù±¾ÊôĞÔÅäÖÃ£¬¼ÓÔØhbmÓ³ÉäÎÄ¼ş)
+	src/hibernate.cfg.xml (å®ŒæˆåŸºæœ¬å±æ€§é…ç½®ï¼ŒåŠ è½½hbmæ˜ å°„æ–‡ä»¶)
 		<property name="hibernate.connection.driver_class">com.mysql.jdbc.Driver</property>
-		<mapping resource="cn/itcast/domain/Customer.hbm.xml"/> ¼ÓÔØhbmÓ³Éä
-* hibernate.properties ÎŞ·¨¼ÓÔØ hbmÓ³Éä £¬ ²ÉÓÃproperties·½Ê½£¬±ØĞëÊÖ¶¯±à³Ì¼ÓÔØ hbmÎÄ¼ş»òÕß ³Ö¾Ã»¯Àà 
+		<mapping resource="cn/itcast/domain/Customer.hbm.xml"/> åŠ è½½hbmæ˜ å°„
+* hibernate.properties æ— æ³•åŠ è½½ hbmæ˜ å°„ ï¼Œ é‡‡ç”¨propertiesæ–¹å¼ï¼Œå¿…é¡»æ‰‹åŠ¨ç¼–ç¨‹åŠ è½½ hbmæ–‡ä»¶æˆ–è€… æŒä¹…åŒ–ç±» 
 
-2¡¢ hibernateµÄ³£ÓÃÊôĞÔ 
-±ØĞëÊôĞÔ
-hibernate.dialect   ²Ù×÷Êı¾İ¿â·½ÑÔ
-hibernate.connection.driver_class  Á¬½ÓÊı¾İ¿âÇı¶¯³ÌĞò
-hibernate.connection.url   Á¬½ÓÊı¾İ¿âURL
-hibernate.connection.username  Êı¾İ¿âÓÃ»§Ãû
-hibernate.connection.password   Êı¾İ¿âÃÜÂë
+2ã€ hibernateçš„å¸¸ç”¨å±æ€§ 
+å¿…é¡»å±æ€§
+hibernate.dialect   æ“ä½œæ•°æ®åº“æ–¹è¨€
+hibernate.connection.driver_class  è¿æ¥æ•°æ®åº“é©±åŠ¨ç¨‹åºhibernate.connection.url   è¿æ¥æ•°æ®åº“URL
+hibernate.connection.username  æ•°æ®åº“ç”¨æˆ·å
+hibernate.connection.password   æ•°æ®åº“å¯†ç 
 
-¿ÉÑ¡ÊôĞÔ 
-hibernate.show_sql  true ÔÚ¿ØÖÆÌ¨ÉÏÊä³öSQLÓï¾ä
-	* hibernate ×Ô¼ºÍê³ÉµÄ£¬²¢Ã»ÓĞÊ¹ÓÃÈÕÖ¾ÏµÍ³ £¬µ±¹Ø±ÕÈÕÖ¾ºó£¬¿ØÖÆÌ¨ÈÔÈ»ÓĞSQLÓï¾ä 
-hibernate.format_sql  true  ¸ñÊ½»¯¿ØÖÆÌ¨Êä³öµÄSQLÓï¾ä
-	* SQL »á×Ô¶¯»»ĞĞ£¬¶ÔÓÚ±È½Ï³¤µÄsql ²é¿´·½±ã 
+å¯é€‰å±æ€§ 
+hibernate.show_sql  true åœ¨æ§åˆ¶å°ä¸Šè¾“å‡ºSQLè¯­å¥
+	* hibernate è‡ªå·±å®Œæˆçš„ï¼Œå¹¶æ²¡æœ‰ä½¿ç”¨æ—¥å¿—ç³»ç»Ÿ ï¼Œå½“å…³é—­æ—¥å¿—åï¼Œæ§åˆ¶å°ä»ç„¶æœ‰SQLè¯­å¥ 
+hibernate.format_sql  true  æ ¼å¼åŒ–æ§åˆ¶å°è¾“å‡ºçš„SQLè¯­å¥
+	* SQL ä¼šè‡ªåŠ¨æ¢è¡Œï¼Œå¯¹äºæ¯”è¾ƒé•¿çš„sql æŸ¥çœ‹æ–¹ä¾¿ 
 	
-hibernate.hbm2ddl.auto  create/create-drop/update/validate  DDL²ßÂÔ
-	* DDL Ö÷Òª½¨±íÓï¾ä£¬ºÍ±í½á¹¹¸üĞÂÓï¾ä 
-	create£º±íÊ¾Æô¶¯µÄÊ±ºòÏÈdrop£¬ÔÙcreate (²âÊÔÈËÔ± ×¼±¸±ê×¼²âÊÔÊı¾İ)
-	create-drop: Ò²±íÊ¾´´½¨£¬Ö»²»¹ıÔÙÏµÍ³¹Ø±ÕÇ°Ö´ĞĞÒ»ÏÂdrop  £¨²âÊÔ³ÌĞòÊÇ·ñÕıÈ·£©
-	update: Õâ¸ö²Ù×÷Æô¶¯µÄÊ±ºò»áÈ¥¼ì²éschemaÊÇ·ñÒ»ÖÂ£¬Èç¹û²»Ò»ÖÂ»á×öscheme¸üĞÂ £¨½¨±í£¬¸üĞÂ±í½á¹¹¡¾Ö»ÄÜ¼Ó¡¿£©
-	validate: Æô¶¯Ê±ÑéÖ¤ÏÖÓĞschemaÓëÄãÅäÖÃµÄhibernateÊÇ·ñÒ»ÖÂ£¬Èç¹û²»Ò»ÖÂ¾ÍÅ×³öÒì³££¬²¢²»×ö¸üĞÂ 
+hibernate.hbm2ddl.auto  create/create-drop/update/validate  DDLç­–ç•¥	* DDL ä¸»è¦å»ºè¡¨è¯­å¥ï¼Œå’Œè¡¨ç»“æ„æ›´æ–°è¯­å¥ 
+	createï¼šè¡¨ç¤ºå¯åŠ¨çš„æ—¶å€™å…ˆdropï¼Œå†create (æµ‹è¯•äººå‘˜ å‡†å¤‡æ ‡å‡†æµ‹è¯•æ•°æ®)
+	create-drop: ä¹Ÿè¡¨ç¤ºåˆ›å»ºï¼Œåªä¸è¿‡å†ç³»ç»Ÿå…³é—­å‰æ‰§è¡Œä¸€ä¸‹drop  ï¼ˆæµ‹è¯•ç¨‹åºæ˜¯å¦æ­£ç¡®ï¼‰
+	update: è¿™ä¸ªæ“ä½œå¯åŠ¨çš„æ—¶å€™ä¼šå»æ£€æŸ¥schemaæ˜¯å¦ä¸€è‡´ï¼Œå¦‚æœä¸ä¸€è‡´ä¼šåšschemeæ›´æ–° ï¼ˆå»ºè¡¨ï¼Œæ›´æ–°è¡¨ç»“æ„ã€åªèƒ½åŠ ã€‘ï¼‰
+	validate: å¯åŠ¨æ—¶éªŒè¯ç°æœ‰schemaä¸ä½ é…ç½®çš„hibernateæ˜¯å¦ä¸€è‡´ï¼Œå¦‚æœä¸ä¸€è‡´å°±æŠ›å‡ºå¼‚å¸¸ï¼Œå¹¶ä¸åšæ›´æ–° 
 	
-*** ÔÚ²úÆ·¿ª·¢ÖĞ update ºÍ validate Ê¹ÓÃ½Ï¶à 	
+*** åœ¨äº§å“å¼€å‘ä¸­ update å’Œ validate ä½¿ç”¨è¾ƒå¤š 	
 
-hibernate.connection.autocommit  true ÊÂÎñÊÇ·ñ×Ô¶¯Ìá½»
-	* ÓÃÓÚ½â¾ö Ã»ÓĞ¿ªÆôÊÂÎñµÄ²Ù×÷Ê±£¬ÊÂÎñÈçºÎ×Ô¶¯´¦Àí 
-	* Ä¬ÈÏÊÂÎñ ×Ô¶¯»Ø¹ö
+hibernate.connection.autocommit  true äº‹åŠ¡æ˜¯å¦è‡ªåŠ¨æäº¤
+	* ç”¨äºè§£å†³ æ²¡æœ‰å¼€å¯äº‹åŠ¡çš„æ“ä½œæ—¶ï¼Œäº‹åŠ¡å¦‚ä½•è‡ªåŠ¨å¤„ç† 
+	* é»˜è®¤äº‹åŠ¡ è‡ªåŠ¨å›æ»š
 
-ÖĞÎç£º hibernateÈëÃÅ³ÌĞò =======================================================================================================
+ä¸­åˆï¼š hibernateå…¥é—¨ç¨‹åº =======================================================================================================
 
 	
 	
@@ -234,27 +232,6 @@ hibernate.connection.autocommit  true ÊÂÎñÊÇ·ñ×Ô¶¯Ìá½»
 
 
 	
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
