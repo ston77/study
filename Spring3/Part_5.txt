@@ -1,0 +1,156 @@
+已经完成spring 综合练习 功能 ： 登陆、 仓库管理（增删改查）
+今天目标：
+   入库
+   库存查询
+   出库
+   历史记录查询 （选作）
+
+功能点三： 入库功能  jsps/save/save.jsp 
+1、 使用ajax功能，获得仓库列表，显示在select 下拉框
+	在页面加载完成后，通过ajax获得仓库列表 
+	
+	使用struts-json插件
+	* package 继承 json-default
+	* result type 写为 json
+	* 插件会将根对象中所有get方法数据返回 
+	
+	只需要返回 仓库name和id 
+	<result name="ajaxlistSUCCESS" type="json">
+				<!-- 设置返回数据根对象 -->
+				<param name="root">action</param>
+				<!-- 返回结果 只需要每个store对象id和name -->
+				<param name="includeProperties">
+					stores\[\d+\]\.id, 
+					stores\[\d+\]\.name
+				</param>
+	</result>
+	
+2、 输入简记码后，通知用户货物是否存在（Ajax），如果存在， 名称、计量单位、仓库无需输入，直接显示 
+   将form 改造 <s:form> 
+   
+	输入简记码，查询服务器，得知货物是否存在， 在jsp中设置 隐藏域，存放货物id
+	* 通过隐藏域id 判断货物是否 存在 
+	
+	输入简记码后，添加blur事件（离焦事件 ），使用ajax发起查询，将查询结果显示到form中 
+   
+3、 提交入库操作 ，在入库如果货物已经存在，修改数量 ， 如果货物不能在，新建一条货物信息 
+	如何判断货物是否存在， 只需要判断 隐藏id 是否有值 ， 判断货物是否存在 
+
+============================================================================================================================
+功能点四、 库存管理 
+	多条件组合查询 
+	使用ajax获得仓库列表 
+
+jsps/store/remain.jsp 的form 改为 <s:form> 
+
+在表现层 使用 DetachedCriteria 动态拼接条件 ，查询List<Goods> goodsList , 传递jsp显示 
+
+在remain.jsp 显示货物信息时，仓库名称无法显示 ？？？？？
+	* 查询goods列表时，关联store对象使用延迟抓取策略 
+
+解决延迟抓取三种常用方法： 
+   方法一： 在hbm中配置 lazy=false 立即加载
+   方法二： 在Service代码中 手动初始化代理对象
+   方法三： OpenSessionInView (一经使用，业务层事务管理 都到了web层 )
+
+功能点五、 出库管理 
+   简记码输入，判断货物是否存在 ----------- 已经在入库实现过，不写了 
+
+1、 用户输入货物名称，使用自动补全技术 
+	* 使用自动补全，使用jquery 官方ui
+	导入 jquery-1.8.3.js
+	导入 jquery-ui-1.9.2.custom.js
+	导入 jquery-ui-1.9.2.custom.css  
+	
+jsps/out/out.jsp 引入上面文件 
+	<link rel="stylesheet" href="${pageContext.request.contextPath }/css/smoothness/jquery-ui-1.9.2.custom.css">
+	<script src="${pageContext.request.contextPath }/js/jquery-1.8.3.js"></script>
+	<script src="${pageContext.request.contextPath }/js/jquery-ui-1.9.2.custom.js"></script>
+ 
+2、 对货物名称使用自动补全 （简单）
+	<input class="tx" type="text" name="name" id="autocomplete" value="阿斯匹林">
+	
+	$( "#autocomplete" ).autocomplete({
+		    source: [ "c++", "java", "php", "coldfusion", "javascript", "asp", "ruby" ]
+	});
+
+
+实际开发中，输入内容， 根据输入内容，到服务器进行查询，将结果回显 
+
+	
+3、 选中 列表名称， 使用ajax查询，将相关数据查询出，显示form 
+4、 出库
+	填写商品出库数量， 完成出库 
+
+出库操作，根据id 修改数量 
+
+全局异常页面 
+		<global-results>
+			<result name="error">/error.jsp</result>
+		</global-results>
+
+    	<global-exception-mappings>
+    		<exception-mapping result="error" exception="java.lang.Exception"></exception-mapping>
+    	</global-exception-mappings>
+
+异常页面 ${pageContext.exception.message} 显示错误信息
+
+功能六： 进出库历史记录查询 （作业）
+	组合条件查询，使用 DetachedCriteria  ，和库存查询代码类似 
+
+	
+
+   
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,788 @@
+
+一、Spring事务管理
+在JavaEE分层开发中，事务管理代码放到业务层
+
+1、 事务管理相关API
+PlatformTransactionManager  平台事务管理器
+	* void commit(TransactionStatus status)  提交事务
+	* TransactionStatus getTransaction(TransactionDefinition definition) 根据事务定义信息，获得当前状态
+	* void rollback(TransactionStatus status)  回滚事务
+
+TransactionDefinition  事务定义信息 （配置信息 来自xml配置文件 和 注解）
+	包括 (隔离、传播、超时、只读)
+	* ISOLATION_xxx 事务隔离级别
+	* PROPAGATION_xxx  事务传播行为
+	* int getTimeout()  获得超时信息
+	* boolean isReadOnly()  判断事务是否只读
+
+TransactionStatus 事务具体运行状态
+	* 每一个时刻点 事务具体状态信息
+
+关系： 	PlatformTransactionManager 根据 TransactionDefinition 进行事务管理， 管理过程中事务存在多种状态， 每个状态信息通过 TransactionStatus 表示
+
+2、 PlatformTransactionManager 接口详解
+1) 不同平台事务管理器实现
+	org.springframework.jdbc.datasource.DataSourceTransactionManager	使用Spring JDBC或iBatis 进行持久化数据时使用
+	org.springframework.orm.hibernate3.HibernateTransactionManager	使用Hibernate3.0版本进行持久化数据时使用
+	org.springframework.orm.jpa.JpaTransactionManager	使用JPA进行持久化时使用
+	org.springframework.jdo.JdoTransactionManager	当持久化机制是Jdo时使用
+	org.springframework.transaction.jta.JtaTransactionManager	使用一个JTA实现来管理事务，在一个事务跨越多个资源时必须使用
+
+* 针对不同持久层技术，选用对应事务管理器
+
+2) TransactionDefinition 事务隔离级别
+事务四大特性 : ACID  原子性、一致性、隔离性、持久性
+隔离性引发并发问题： 脏读、 不可重复读、 虚读
+	* 脏读 一个事务读取另一个事务 未提交数据
+	* 不可重复读 一个事务读取另一个事务 已经提交 update 数据
+	* 虚读  一个事务读取另一个事务 已经提交 insert 数据
+事务隔离级别 为了解决 事务隔离性引发 问题
+	* DEFAULT 默认级别  mysql REPEATABLE_READ 、 oracle READ_COMMITTED
+	* READ_UNCOMMITED  导致所有问题发生
+	* READ_COMMITTED 防止脏读、 发生不可重复读和虚读
+	* REPEATABLE_READ 防止脏读、不可重复读，发生虚读
+	* SERIALIZABLE 防止所有并发问题
+
+3） TransactionDefinition 事务的传播行为
+	* 不是JDBC 规范定义
+	* 传播行为 针对实际开发中问题
+
+传播行为解决问题： 一个业务层事务 调用 另一个业务层事务，事务之间关系如何处理
+
+七种传播行为
+	PROPAGATION_REQUIRED	支持当前事务，如果不存在 就新建一个
+		* 删除客户 删除订单， 处于同一个事务，如果 删除订单失败，删除客户也要回滚
+	PROPAGATION_SUPPORTS	支持当前事务，如果不存在，就不使用事务
+	PROPAGATION_MANDATORY	支持当前事务，如果不存在，抛出异常
+
+	PROPAGATION_REQUIRES_NEW	如果有事务存在，挂起当前事务，创建一个新的事务
+		* 生成订单， 发送通知邮件， 通知邮件会创建一个新的事务，如果邮件失败， 不影响订单生成
+	PROPAGATION_NOT_SUPPORTED	以非事务方式运行，如果有事务存在，挂起当前事务
+	PROPAGATION_NEVER 	以非事务方式运行，如果有事务存在，抛出异常
+
+	PROPAGATION_NESTED	如果当前事务存在，则嵌套事务执行
+		* 依赖于 JDBC3.0 提供 SavePoint 技术
+		* 删除客户 删除订单, 在删除客户后， 设置SavePoint, 执行删除订单，删除订单和删除客户在同一个事务 ，删除订单失败， 事务回滚 SavePoint , 由用户控制是事务提交 还是 回滚
+
+重点：
+PROPAGATION_REQUIRED 一个事务， 要么都成功，要么都失败
+PROPAGATION_REQUIRES_NEW 两个不同事务，彼此之间没有关系  一个事务失败了 不影响另一个事务
+PROPAGATION_NESTED  一个事务， 在A事务 调用 B过程中， B失败了， 回滚事务到 之前SavePoint ， 用户可以选择提交事务或者回滚事务
+
+=================================================================================================================================
+3、 Spring 事务管理方式
+	1） 编程式 事务管理  （了解）
+	在代码中 通过 TransactionTemplate 手动进行事务管理 ，在实际开发中很少被用到
+	2） 声明式 事务管理
+	在配置文件中，对Bean的方法进行事务管理， 基于AOP思想 ，无需写代码， 开发中主流使用
+
+4、 Spring 通过编程式 进行事务管理
+第一步： 创建账户数据表
+CREATE TABLE `account` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(20) NOT NULL,
+  `money` double DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
+INSERT INTO `account` VALUES ('1', 'aaa', '1000');
+INSERT INTO `account` VALUES ('2', 'bbb', '1000');
+
+第二步 ： 编写转账操作程序  （数据库操作 JdbcTemplate ）
+AccountServiceImpl
+	public class AccountServiceImpl implements AccountService {
+		// 在Service中注入DAO
+		private AccountDAO accountDAO;
+
+		@Override
+		public void transfer(String outAccount, String inAccount, double money) {
+			accountDAO.outMoney(outAccount, money);
+			accountDAO.inMoney(inAccount, money);
+		}
+
+		public void setAccountDAO(AccountDAO accountDAO) {
+			this.accountDAO = accountDAO;
+		}
+	}
+
+AccountDAOImpl
+	public class AccountDAOImpl extends JdbcDaoSupport implements AccountDAO {
+
+		@Override
+		public void outMoney(String outAccount, double money) {
+			String sql = "update account set money = money-? where name = ?";
+			this.getJdbcTemplate().update(sql, money, outAccount);
+		}
+
+		@Override
+		public void inMoney(String inAccount, double money) {
+			String sql = "update account set money = money + ? where name = ?";
+			this.getJdbcTemplate().update(sql, money, inAccount);
+		}
+
+	}
+
+配置applicationContext.xml
+	<!-- 导入外部属性文件 -->
+	<context:property-placeholder location="classpath:jdbc.properties"/>
+
+	<!-- 数据库连接池  -->
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+		<property name="driverClass" value="${jdbc.driver}"></property>
+		<property name="jdbcUrl" value="${jdbc.url}"></property>
+		<property name="user" value="${jdbc.user}"></property>
+		<property name="password" value="${jdbc.password}"></property>
+	</bean>
+
+	<!-- 业务层 -->
+	<bean id="accountService" class="cn.itcast.spring.transaction.a_programing.AccountServiceImpl">
+		<property name="accountDAO" ref="accountDAO"></property>
+	</bean>
+
+	<!-- DAO -->
+	<bean id="accountDAO" class="cn.itcast.spring.transaction.a_programing.AccountDAOImpl">
+		<!-- 将连接池注入给DAO ，JdbcDaoSupport 自动创建 JdbcTemplate对象 -->
+		<property name="dataSource" ref="dataSource"></property>
+	</bean>
+
+*********** 如果没有使用任何事务管理 ， JdbcTemplate DAO 每个操作 就是单独的事务
+
+第三步 ： 在AccountService 中注入 TransactionTamplate  事务管理模板 ，完成事务管理
+	<!-- 事务管理模板 -->
+	<bean id="transactionTemplate" class="org.springframework.transaction.support.TransactionTemplate">
+		<!-- 将管理器 注入给 模板 -->
+		<property name="transactionManager" ref="transactionManager"></property>
+	</bean>
+
+	<!-- 事务管理器 -->
+	<!-- org.springframework.jdbc.datasource.DataSourceTransactionManager 用来管理 jdbc操作事务的 -->
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<!--  将连接池 注入给事务管理器  -->
+		<property name="dataSource" ref="dataSource"></property>
+	</bean>
+
+	<bean id="accountService" class="cn.itcast.spring.transaction.a_programing.AccountServiceImpl">
+		<property name="accountDAO" ref="accountDAO"></property>
+		<property name="transactionTemplate" ref="transactionTemplate"></property>
+	</bean>
+
+第四步 ：使用TransactionTemplate 进行事务管理
+	public void transfer(final String outAccount, final String inAccount,
+			final double money) {
+		// 使用 事务模板 管理事务
+		transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+			@Override
+			protected void doInTransactionWithoutResult(
+					TransactionStatus transactionStatus) {
+				accountDAO.outMoney(outAccount, money);
+				int d = 1 / 0;
+				accountDAO.inMoney(inAccount, money);
+			}
+		});
+	}
+
+================================================================================================================
+在实际开发中，因为编程式事务管理 存在代码侵入，所有不常使用， 通常通过 声明式事务管理
+
+5、 通过TransactionProxyFactoryBean 对业务类创建代理，实现声明式事务管理
+	*无需修改Service代码
+	*通过applicationContext.xml 配置为AccountService 对象创建代理
+
+必须配置事务管理器
+	<!-- 事务管理器 -->
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource"></property>
+	</bean>
+
+为目标Service创建代理
+	<bean id="accountServiceProxy" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+		<!-- 目标 -->
+		<property name="target" ref="accountService"></property>
+		<!-- 针对接口代理 -->
+		<property name="proxyInterfaces" value="cn.itcast.spring.transaction.b_transactionproxyfactorybean.AccountService"></property>
+		<!-- 增强  事务管理-->
+		<property name="transactionManager" ref="transactionManager"></property>
+		<property name="transactionAttributes">  <!-- 事务管理属性 -->
+			 <!-- 针对目标对象 每个方法 ，设置隔离级别、传播行为、是否只读 -->
+			 <props>
+			 	<!-- key就是方法名 -->
+			 	<!-- value prop格式：PROPAGATION,ISOLATION,readOnly,-Exception,+Exception -->
+			 	<prop key="transfer">PROPAGATION_REQUIRED</prop>
+			 </props>
+		</property>
+	</bean>
+
+使用该方式，在Test程序中，注入代理对象
+	public class AccountServiceTest {
+		@Autowired
+		@Qualifier("accountServiceProxy") // 注入代理对象
+		private AccountService accountService;
+		...
+	}
+
+事务属性设置 prop格式：PROPAGATION,ISOLATION,readOnly,-Exception,+Exception
+	PROPAGATION 事务传播行为
+	ISOLATION, 事务隔离级别
+	readOnly  表示事务是只读的，不能进行修改操作
+	-Exception 发生这些异常事务进行回滚 （默认发生任何异常事务都会回滚）
+	+Exception 事务将忽略这些异常，仍然提交事务
+
+*** 基于TransactionProxyFactoryBean 创建代理对象，进行事务管理，缺点需要为 每个Bean 都创建单独代理对象，开发量巨大
+
+6、 基于tx配置 ，为目标对象进行自动代理 （重点 ）
+	在applicationContext.xml 引入 tx 和 aop 两个名词空间
+
+	<!-- 使用tx定义 事务管理增强 -->
+	<tx:advice id="txAdvice" transaction-manager="transactionManager">
+		<!-- 方法的事务管理属性 -->
+		<tx:attributes>
+			<!--
+				name="transfer" 事务管理方法名
+				isolation="DEFAULT" 默认隔离级别
+				propagation="REQUIRED"  默认传播行为
+				read-only="false"  是否只读
+				no-rollback-for=""  发生异常不会滚  类似+Exception
+				rollback-for=""  发生异常回滚 类似-Exception
+				timeout="-1"  不超时
+			-->
+			<tx:method name="transfer"/>
+		</tx:attributes>
+	</tx:advice>
+
+	<!-- 使用Aop 进行自动代理 -->
+	<aop:config>
+		<!-- 定义切点 -->
+		<aop:pointcut expression="execution(* cn.itcast.spring.transaction.c_txconfig.AccountService+.*(..))" id="mypointcut"/>
+		<!-- 定义切面 -->
+		<aop:advisor advice-ref="txAdvice" pointcut-ref="mypointcut"/>
+	</aop:config>
+
+*** 定义 事务管理 tx:advice 将增强代码 应用切点上
+
+7、 基于注解的声明式事务管理 （重点***）
+	第一步 ：在需要管理事务 类或者方法 上添加 @Transactional
+	第二步： 在applicationContext.xml 配置
+			<!-- 事务管理器 -->
+			<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+				<property name="dataSource" ref="dataSource"></property>
+			</bean>
+
+			<!-- 注解事务管理 -->
+			<tx:annotation-driven transaction-manager="transactionManager"/>
+
+配置事务属性 通过@Transactional配置
+	@Transactional(isolation = Isolation.DEFAULT, propagation = Propagation.REQUIRED, readOnly = false, noRollbackFor = ArithmeticException.class, rollbackFor = NullPointerException.class, timeout = -1)
+	* isolation 隔离级别
+	* propagation 传播行为
+	* readOnly 是否只读
+	* noRollbackFor 发生异常不回滚
+	* rollbackFor 发生异常回滚
+	* timeout 超时时间 -1 不超时
+
+小结 ：
+	TransactionTemplate 编程式事务管理 了解
+	TransactionProxyFactoryBean 声明式事务管理 了解
+	基于 tx 和 aop xml配置 声明式事务管理  重点掌握
+	基于 @Transactional 注解 声明式事务管理 重点掌握
+
+=================================================================================================================================
+二、 Struts2 + Spring3 + Hibernate3 框架整合
+1、 每个框架使用 （开发环境搭建 ）
+* 表现层框架 struts2
+	1) jar包导入：  apps/struts2_blank.war 包含struts2 开发最基本的jar包
+	struts2-convention-plugin-2.3.7.jar用于struts使用注解  （如果不使用注解开发，无需导入）
+	struts2-json-plugin-2.3.7.jar 用于struts2整合Ajax
+	struts2-spring-plugin-2.3.7.jar 用于struts2整合Spring （整合spring 必须导入）
+
+	2) web.xml 配置strut2核心Filter
+	<filter>
+        <filter-name>struts2</filter-name>
+        <filter-class>org.apache.struts2.dispatcher.ng.filter.StrutsPrepareAndExecuteFilter</filter-class>
+    </filter>
+
+    <filter-mapping>
+        <filter-name>struts2</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+	3)  在src目录创建struts.xml (核心配置文件)
+
+*  业务层框架 spring3
+   1) jar包导入
+	  Spring3.2 开发最基本jar包
+		spring-beans-3.2.0.RELEASE.jar
+		spring-context-3.2.0.RELEASE.jar
+		spring-core-3.2.0.RELEASE.jar
+		spring-expression-3.2.0.RELEASE.jar
+		com.springsource.org.apache.commons.logging-1.1.1.jar
+		com.springsource.org.apache.log4j-1.2.15.jar
+	  AOP开发
+		spring-aop-3.2.0.RELEASE.jar
+		spring-aspects-3.2.0.RELEASE.jar
+		com.springsource.org.aopalliance-1.0.0.jar
+		com.springsource.org.aspectj.weaver-1.6.8.RELEASE.jar
+	  Spring Jdbc开发
+		spring-jdbc-3.2.0.RELEASE.jar
+		spring-tx-3.2.0.RELEASE.jar
+      Spring事务管理
+		spring-tx-3.2.0.RELEASE.jar
+	  Spring整合其他ORM框架 （整合hibernate ）
+		spring-orm-3.2.0.RELEASE.jar
+	  Spring在web中使用
+		spring-web-3.2.0.RELEASE.jar
+	  Spring整合Junit测试
+		spring-test-3.2.0.RELEASE.jar
+	(备注说明： 总结jar中 不包括 c3p0 和 数据库驱动 )
+
+	2） 配置web.xml  监听器加载Spring配置
+	  <listener>
+		<!-- 默认加载WEB-INF/applicationContext.xml -->
+		<listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+	  </listener>
+
+	  <context-param>
+		<param-name>contextConfigLocation</param-name>
+		<param-value>classpath:applicationContext.xml</param-value>
+	  </context-param>
+
+	3） 在src下 创建applicationContext.xml
+	4） 在src下 创建log4j.properties
+
+* 持久层框架 hibernate3.6
+    1) jar包导入
+		hibernate3.jar
+		required/*.jar
+		hibernate-jpa-2.0-api-1.0.1.Final.jar
+		c3p0 + mysql驱动
+		整合log4j 导入slf4j 整合jar包 slf4j-log4j12-1.7.2.jar
+		（因为spring已经导入 log4j 无需再次导入 ）
+	二级缓存
+		ehcache-1.5.0.jar
+		commons-logging.jar
+		backport-util-concurrent.jar
+
+    2） 在src下 创建hibernate.cfg.xml
+    3） 在PO类所在包 创建 类名.hbm.xml
+
+2、 每个框架 编程步骤
+struts2
+	请求 --- Action
+	Action 使用Service （整合Spring ）
+		原始代码： WebApplicationContext wac = WebApplicationContextUtils.getWebApplicationContext(servletcontext);
+		           XxxService service = wac.getBean(...);
+
+spring
+	将DAO 注入到Service中
+	DAO操作Hibernate
+		Configuration configuration = new Configuration().configure();
+		SessionFactory sessionFactory = configuration.buildSessionFactory();
+		Session session = sessionFactory.getCurrentSession();
+		Transaction tx = session.beginTransaction();
+
+		操作....
+
+		tx.commit();
+
+===============================================================================================================
+3、 struts2 整合 spring
+   创建四个包
+	cn.itcast.domain 实体类
+	cn.itcast.dao 数据层
+	cn.itcast.service 业务层
+	cn.itcast.web.action 表现层
+
+   实体类 Book
+
+   book.jsp 添加图书
+   <s:form action="addbook" namespace="/" method="post" theme="simple">
+		图书名称 <s:textfield name="name"></s:textfield> <br/>
+		图书价格 <s:textfield name="price"></s:textfield><br/>
+		<s:submit type="submit" value="提交"></s:submit>
+   </s:form>
+
+   编写BookAction， 配置struts.xml
+  <package name="default" namespace="/" extends="struts-default">
+		<action name="addbook" class="cn.itcast.web.action.BookAction"></action>
+   </package>
+
+方式一 ： Action自动装配Service
+	导入 struts2-spring 整合 jar包  struts-plugin.xml
+		<!--  Make the Spring object factory the automatic default -->
+		<constant name="struts.objectFactory" value="spring" />
+	使得struts-core 的default.properties
+		### valid values are: name, type, auto, and constructor (name is the default)
+		struts.objectFactory.spring.autoWire = name
+
+只需要在Action 中定义Service对象，提供setter方法
+	private BookService bookService;
+
+	public void setBookService(BookService bookService) {
+		this.bookService = bookService;
+	}
+
+*** 整合插件，默认按照名称自动注入
+	可以修改 插件装配方式 为 type 、auto、contructor
+
+方式二 ： Action由Spring创建管理 （推荐）
+	* 区别于方式一， struts2的Action 交给Spring 创建管理，在struts.xml 通过伪类名 引用 Spring Action Bean
+
+	struts.xml
+	<package name="default" namespace="/" extends="struts-default">
+  		<!-- 方式二，将Action 交给Spring 管理 ， class属性 编写伪类名-->
+  		<action name="addbook" class="bookAction"></action>
+    </package>
+
+	applicationContext.xml
+	<!-- 配置Action -->
+	<bean id="bookAction" class="cn.itcast.web.action.BookAction">
+		<property name="bookService" ref="bookService"></property>
+	</bean>
+
+注意！！！！ 使用方式二，因为Action 交给Spring创建，成为Spring中一个Bean , 默认scope 是 singleton ， 一定要将scope配置prototype
+使用方式二，很方便对Action进行代理，切面编程
+
+================================================================================================================================
+4、 spring整合hibernate
+原理： 将sessionFactory 交由 Spring管理
+
+方式一 零障碍整合，在spring中直接引入hibernate配置文件
+通过LocalSessionFactoryBean在spring中直接引用hibernate配置文件
+
+applicationContext.xml
+	<!-- 整合hibernate 方式一 -->
+	<bean id="sessionFactory" class="org.springframework.orm.hibernate3.LocalSessionFactoryBean">
+		<property name="configLocation" value="classpath:hibernate.cfg.xml"></property>
+	</bean>
+
+在DAO中使用SessionFactory 获得Session，进行操作，Spring提供 HibernateTemplate 简化Hibernate操作
+只需DAO程序 extends HibernateDaoSupport
+
+public class BookDAO extends HibernateDaoSupport {}
+applicationContext.xml
+	<bean id="bookDAO" class="cn.itcast.dao.BookDAO">
+		<!-- 注入sessionFactory， 构造hibernateTemplate -->
+		<property name="sessionFactory" ref="sessionFactory"></property>
+	</bean>
+
+使用HibernateTemplate 保存数据
+	this.getHibernateTemplate().save(book);
+
+别忘了！！！！ 对业务层进行事务管理
+1)
+	@Transactional
+	public class BookService {
+	}
+2)
+applicationContext.xml
+	<!-- 事务管理 -->
+	<tx:annotation-driven transaction-manager="transactionManager"/>
+	<bean id="transactionManager" class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory"></property>
+	</bean>
+
+方式二 ： 将Hibernate参数配置到Spring中
+	完全不需要hibernate的配置文件， 将hibernate.cfg.xml 中内容 都配置Spring 的applicationContext.xml中
+
+hibernate.cfg.xml中包括三类信息
+	1) 连接池信息  JDBC基本参数
+    2) hibernate常用属性配置
+	3) 映射hbm文件
+
+1) 连接池基本信息，在spring中配置 c3p0 连接池
+   <!-- 导入外部属性文件 -->
+	<context:property-placeholder location="classpath:jdbc.properties"/>
+
+	<!-- 数据库连接池  -->
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+		<property name="driverClass" value="${jdbc.driver}"></property>
+		<property name="jdbcUrl" value="${jdbc.url}"></property>
+		<property name="user" value="${jdbc.user}"></property>
+		<property name="password" value="${jdbc.password}"></property>
+	</bean>
+
+	编写外部属性文件 jdbc.properties
+
+2) hibernate常用属性配置
+	<property name="hibernateProperties">
+			<props>
+				<prop key="hibernate.dialect">org.hibernate.dialect.MySQLDialect</prop>
+				<prop key="hibernate.show_sql">true</prop>
+				<prop key="hibernate.format_sql">true</prop>
+				<prop key="hibernate.hbm2ddl.auto">update</prop>
+				<prop key="hibernate.connection.autocommit">true</prop>
+			</props>
+	</property>
+
+3)  映射hbm文件
+	单文件
+	<property name="mappingResources">
+			<list>
+				<value>cn/itcast/domain/Book.hbm.xml</value>
+			</list>
+	</property>
+	目录方式（推荐）
+	<property name="mappingDirectoryLocations">
+			<list>
+				<value>classpath:cn/itcast/domain</value>
+			</list>
+	</property>
+
+==========================================================================================================================
+5、 HibernateTemplate使用
+   Hibernate Session API 被 Spring 提供 HibernateTemplate 简化
+   以后的开发中 将直接使用 HibernateTemplate 的API
+
+最常用 API
+ Serializable save(Object entity) ： 保存
+ void update(Object entity)  ： 修改
+ void delete(Object entity)  ： 删除
+ <T> T get(Class<T> entityClass, Serializable id) ： 根据id 查询 （立即查询）
+ <T> T load(Class<T> entityClass, Serializable id) ： 根据id查询 （默认延迟查询）
+ List find(String queryString, Object... values)  ： 根据hql查询
+ List findByCriteria(DetachedCriteria criteria)  ： 使用离线条件查询   ----------- 重点
+ List findByNamedQuery(String queryName, Object... values)   ： 使用命名查询语句 ------------ 重点
+
+*****   6、 OpenSessionInViewFilter使用
+ OpenSessionInView 为了解决 延迟加载问题
+
+ BookDAO
+	// 返回延迟加载对象
+	public Book findByIdLazy(Integer id) {
+		return this.getHibernateTemplate().load(Book.class, id);
+	}
+
+ 如果业务层管理事务，Action查询对象属于脱管态对象，如果延迟加载，抛出no Session 异常
+ 解决 ：
+   <!-- OpenSessionInView -->
+  <filter>
+  	<filter-name>OpenSessionInView</filter-name>
+  	<filter-class>org.springframework.orm.hibernate3.support.OpenSessionInViewFilter</filter-class>
+  </filter>
+
+  <filter-mapping>
+  	<filter-name>OpenSessionInView</filter-name>
+  	<url-pattern>/*</url-pattern>
+  </filter-mapping>
+
+ 参考hibernate课程： 立即加载和手动初始化代理对象
+
+=========================================================================================================================
+7、 使用注解整合ssh
+1） 导入jar包
+	导入ssh2 所有jar包 +  struts2-convention-plugin-2.3.7.jar
+
+2） web.xml
+	struts2 Filter
+	spring Listener
+
+  <!-- spring 监听器 -->
+  <listener>
+  	<!-- 默认加载WEB-INF/applicationContext.xml -->
+  	<listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+  </listener>
+
+  <context-param>
+  	<param-name>contextConfigLocation</param-name>
+  	<param-value>classpath:applicationContext.xml</param-value>
+  </context-param>
+
+  <!-- struts2 核心控制器 -->
+  <filter>
+        <filter-name>struts2</filter-name>
+        <filter-class>org.apache.struts2.dispatcher.ng.filter.StrutsPrepareAndExecuteFilter</filter-class>
+    </filter>
+
+    <filter-mapping>
+        <filter-name>struts2</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+3） src下 log4j.properties 、 applicationContext.xml 、 jdbc.properties
+	applicationContext.xml 仍然需要配置连接池、需要配置hibernate属性、需要配置事务管理
+
+4） 编写Action
+	@Namespace("/")
+	@ParentPackage("struts-default")
+	// 交给Spring管理
+	@Controller("bookAction")
+	@Scope("prototype")
+	public class BookAction extends ActionSupport implements ModelDriven<Book> {
+
+		private Book book = new Book();
+
+		@Override
+		public Book getModel() {
+			return book;
+		}
+
+		@Autowired
+		@Qualifier("bookService")
+		private BookService bookService;
+
+		@Override
+		@Action("addbook")
+		public String execute() throws Exception {
+			System.out.println("添加图书 Action执行...");
+			bookService.addBook(book);
+			return NONE;
+		}
+
+	}
+
+5） 编写Service
+	// Spring管理
+	@Service("bookService")
+	@Transactional
+	public class BookService {
+		@Autowired
+		@Qualifier("bookDAO")
+		private BookDAO bookDAO;
+
+		public void addBook(Book book) {
+			System.out.println("添加图书 service执行...");
+			bookDAO.save(book);
+		}
+	}
+
+ 事务管理
+	<!-- 事务管理 -->
+	<bean id="transactionManager" class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory"></property>
+	</bean>
+	<tx:annotation-driven transaction-manager="transactionManager"/>
+
+6） 编写DAO
+	@Repository("bookDAO")
+	public class BookDAO {
+		@Autowired
+		@Qualifier("hibernateTemplate")
+		private HibernateTemplate hibernateTemplate;
+
+		public void save(Book book) {
+			System.out.println("添加图书 DAO执行...");
+			hibernateTemplate.save(book);
+		}
+	}
+
+	<!-- 配置SessionFactory -->
+	<!-- 实体类 使用xml 使用 org.springframework.orm.hibernate3.LocalSessionFactoryBean -->
+	<!-- 实体类使用 注解 使用 AnnotationSessionFactoryBean-->
+	<bean id="sessionFactory" class="org.springframework.orm.hibernate3.annotation.AnnotationSessionFactoryBean">
+		<property name="dataSource" ref="dataSource"></property>
+		<property name="hibernateProperties">
+			<props>
+				<prop key="hibernate.dialect">org.hibernate.dialect.MySQLDialect</prop>
+				<prop key="hibernate.show_sql">true</prop>
+				<prop key="hibernate.format_sql">true</prop>
+				<prop key="hibernate.hbm2ddl.auto">update</prop>
+				<prop key="hibernate.connection.autocommit">true</prop>
+			</props>
+		</property>
+		<!-- 加载注释实体类  -->
+		<property name="packagesToScan">
+			<list>
+				<value>cn.itcast.domain</value>
+			</list>
+		</property>
+	</bean>
+
+	<!-- SessionFactory 注入 HibernateTemplate  , 将模板注入给DAO-->
+	<bean id="hibernateTemplate" class="org.springframework.orm.hibernate3.HibernateTemplate">
+		<property name="sessionFactory" ref="sessionFactory"></property>
+	</bean>
+
+7） 所有Bean 采用扫描注册
+	<context:component-scan base-package="cn.itcast.web.action,cn.itcast.dao,cn.itcast.service"></context:component-scan>
+
+
+******  配置连接池、配置SessionFactory 、将SessionFactory注入HibernateTemplate注入DAO ， 事务管理  ----- 必须写
+
+===============================================================================================================================
+小结 ：
+ 1、 ssh 框架整合原理
+	Struts2 整合 Spring3
+	WebApplicationContext webApplicationContext = WebApplicationUtils.getWebApplicationContext(servletContext);
+	被StrutsSpringObjectFactory 封装
+
+	Spring3整合Hibernate
+	将SessionFactory 引入Spring 管理  ， 底层Hibernate代码，使用HibernateTemplate 封装
+
+ 2） struts2 整合 spring3 两种方式
+	导入struts2-spring jar包 ------  struts.objectFactory=spring
+ 方式一： struts2自己管理Action， 将Service自动装配
+ 方式二： struts2将Action创建权交给Spring，需要配置Action 为prototype
+
+ 3） spring3整合 hibernate3 两种方式
+  方式一：在spring中直接引入 hibernate.cfg.xml 配置文件
+  方式二：将hibernate属性 配置到Spring 中
+
+ 4） 注解整合三大框架
+	Action  @Controller
+	Service @Service
+	DAO  @Repostory
+  通过component-scan扫描 注册Bean
+
+ 5） HibernatTemplate API
+ 6） OpenSessionInViewFilter 使用
+
+作业：
+   struts2整合Spring 第二种 交给Spring管理， Spring中配置hibernate属性 第二种 ------ 做至少2-3遍
+   注解整合  ---- 至少一遍
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

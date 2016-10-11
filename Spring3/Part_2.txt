@@ -1,0 +1,633 @@
+
+一、 什么是 AOP *****
+AOP Aspect Oriented Programing 面向切面编程 ， 人们说AOP 是对 OOP （面向对象编程）思想一个延伸
+AOP采取横向抽取机制，取代了传统纵向继承体系重复性代码（性能监视、事务管理、安全检查、缓存）
+
+**** AOP 面向切面编程 底层原理 代理！！！
+
+今天AOP课程
+1、 Spring 传统 AOP
+2、 Spring 2.0 之后整合 AspectJ 第三方 AOP技术
+
+相关术语 *****
+Joinpoint(连接点):所谓连接点是指那些被拦截到的点。在spring中,这些点指的是方法,因为spring只支持方法类型的连接点.
+Pointcut(切入点):所谓切入点是指我们要对哪些Joinpoint进行拦截的定义.
+Advice(通知/增强):所谓通知是指拦截到Joinpoint之后所要做的事情就是通知.通知分为前置通知,后置通知,异常通知,最终通知,环绕通知(切面要完成的功能)
+Introduction(引介):引介是一种特殊的通知在不修改类代码的前提下, Introduction可以在运行期为类动态地添加一些方法或Field.
+Target(目标对象):代理的目标对象
+Weaving(织入):是指把增强应用到目标对象来创建新的代理对象的过程.
+	spring采用动态代理织入，而AspectJ采用编译期织入和类装在期织入
+Proxy（代理）:一个类被AOP织入增强后，就产生一个结果代理类
+Aspect(切面): 是切入点和通知（引介）的结合
+
+二、 AOP 的底层实现
+AOP 底层使用的代理技术 ： JDK动态代理 和 CGlib的动态代理
+
+1、 JDK动态代理
+原理： 针对内存中Class对象，使用类加载器 动态为目标对象实现接口的创建代理类
+	* 代理类 是动态创建的， 代理类 和 被代理对象 实现相同接口
+	* 被代理对象 必须要实现 接口 （JDK代理 只能针对接口 进行代理 ）
+	public class MyJDKProxy implements InvocationHandler {
+		private UserDAO userDAO;// 被代理对象
+		// 通过被代理对象 构造 代理类对象
+		public MyJDKProxy(UserDAO userDAO) {
+			this.userDAO = userDAO;
+		}
+		/**
+		 * 使用JDK进行 动态代理
+		 *
+		 * @param userDAO
+		 *            被代理对象
+		 * @return
+		 */
+		public UserDAO createJDKProxy() {
+			return (UserDAO) Proxy.newProxyInstance(userDAO.getClass()
+					.getClassLoader(), userDAO.getClass().getInterfaces(), this);
+		}
+		@Override
+		// 访问被代理对象 任何方法，都和执行 invoke
+		public Object invoke(Object proxy, Method method, Object[] args)
+				throws Throwable {
+			// 针对 add 方法进行 增强，记录日志 ...
+			if (method.getName().equals("add")) {// 如果访问方法 是 add方法
+				System.out.println("记录日志....");
+				// 调用目标方法
+				return method.invoke(userDAO, args);
+			} else {
+				// 其它方法
+				return method.invoke(userDAO, args);
+			}
+		}
+	}
+
+2、 使用CGlib 完成动态代理
+	* JDK 动态代理原理， 为目标对象 接口生成代理对象 ，对于不使用接口的业务类，无法使用JDK动态代理
+
+CGLIB(Code Generation Library)是一个开源项目！
+	是一个强大的,高性能,高质量的Code生成类库,它可以在运行期扩展Java类与实现Java接口。Hibernate支持CGlib 来实现PO字节码的动态生成。
+	* Hibernate 默认PO 字节码生成技术  javassist
+
+CGLIB 是一个第三方技术，使用时 ，需要下载 jar 包
+	http://sourceforge.net/projects/cglib/
+	* Spring3.2 版本， spring-core jar包 已经集成 cglib 开发类
+
+原理 ： CGlib采用非常底层字节码技术，可以为一个类创建子类，解决无接口代理问题
+	public class MyCglibProxy implements MethodInterceptor {
+		// 目标对象
+		private ProductDAO productDAO;
+		// 通过构造器 传入被代理对象
+		public MyCglibProxy(ProductDAO productDAO) {
+			this.productDAO = productDAO;
+		}
+		// 创建代理
+		public ProductDAO createCglibProxy() {
+			// 创建代理核心对象
+			Enhancer enhancer = new Enhancer();
+			// 设置被代理类 （为类创建子类）
+			enhancer.setSuperclass(productDAO.getClass());
+
+			// 设置回调函数
+			enhancer.setCallback(this);
+
+			// 返回代理 (返回代理子类对象)
+			return (ProductDAO) enhancer.create();
+		}
+		@Override
+		// 被代理对象所有方法执行 ，都会调用 intercept 方法
+		public Object intercept(Object proxy, Method method, Object[] args,
+				MethodProxy methodProxy) throws Throwable {
+			// 为 addProduct 计算运算时间
+			if (method.getName().equals("addProduct")) {// 当前执行方法
+				long start = System.currentTimeMillis();
+				Object result = methodProxy.invokeSuper(proxy, args);
+				long end = System.currentTimeMillis();
+				System.out.println("addProduct方法运行时间 : " + (end - start));
+				return result;
+			} else {
+				// 不进行增强
+				return methodProxy.invokeSuper(proxy, args);
+			}
+		}
+	}
+
+结论：
+	1）.若目标对象实现了若干接口，spring使用JDK的java.lang.reflect.Proxy类代理。
+	2）.若目标对象没有实现任何接口，spring使用CGLIB库生成目标对象的子类
+程序中应优先对接口创建代理，便于程序解耦维护
+
+三、 Spring AOP
+AOP 开发规范 ： AOP联盟为通知Advice定义了org.aopalliance.aop.Interface.Advice
+Spring AOP 实现 AOP联盟定义 规范
+
+1、 传统Spring AOP 提供 五类 Advice
+前置通知(代码增强) org.springframework.aop.MethodBeforeAdvice
+	* 在目标方法执行前实施增强
+后置通知 org.springframework.aop.AfterReturningAdvice
+	* 在目标方法执行后实施增强
+环绕通知 org.aopalliance.intercept.MethodInterceptor
+	* 在目标方法执行前后实施增强
+异常抛出通知 org.springframework.aop.ThrowsAdvice
+	* 在方法抛出异常后实施增强
+引介通知 org.springframework.aop.IntroductionInterceptor （课程不讲 了解）
+	* 在目标类中添加一些新的方法和属性
+
+2、 Spring 的切面  Advisor
+    Advisor 就是对PointCut 应用 Advice （通常所说Advisor 指只有一个Point 和 一个 Advice ）
+
+类型：
+Advisor : 代表一般切面，Advice本身就是一个切面，对目标类所有方法进行拦截 （没有切点）
+PointcutAdvisor : 代表具有切点的切面，可以指定拦截目标类哪些方法
+IntroductionAdvisor : 代表引介切面，针对引介通知而使用切面（不要求掌握）
+
+3、案例一（不带切点的切面） ： 使用普通Advisor， 使用Advice作为一个切面 ，不定义切点，拦截目标类 所有方法
+  1） 导入jar包
+	导入 aop联盟的规范 ： com.springsource.org.aopalliance-1.0.0.jar
+	导入 spring aop实现 ： spring-aop-3.2.0.RELEASE.jar
+  2） 编写被代理 接口和实现类
+	CustomerDAO
+	CustomerDAOImpl
+  3） 编写前置通知 （在目标方法前执行...）
+	MyMethodBeforeAdvice
+  4） 为目标对象创建 , 配置applicationContext.xml
+	使用ProxyFactoryBean 为目标对象创建代理
+
+	<!-- 被代理对象 -->
+	<bean id="customerDAO" class="cn.itcast.aop.c_advisor.CustomerDAOImpl"></bean>
+
+	<!-- 增强 -->
+	<bean id="mybeforeadvice" class="cn.itcast.aop.c_advisor.MyMethodBeforeAdvice"></bean>
+
+	<!-- 创建代理  -->
+	<bean id="customerDAOProxy" class="org.springframework.aop.framework.ProxyFactoryBean">
+		<!-- 目标 -->
+		<property name="target" ref="customerDAO"></property>
+		<!-- 针对接口代理 -->
+		<property name="proxyInterfaces" value="cn.itcast.aop.c_advisor.CustomerDAO"></property>
+		<!-- 增强
+			interceptorNames 表示可以运用多个 Advice, 必须写value
+		-->
+		<property name="interceptorNames" value="mybeforeadvice"></property>
+	</bean>
+
+注意事项： 在编程时，应该使用 ProxyFactoryBean 创建后代理对象(CustomerDAOProxy )， 不要引入原来Bean （CustomerDAO）
+
+4 案例二 （带有切点的切面）： 定义单独切点切面，指定被代理对象 哪些方法 会被增强
+	* JdkRegexpMethodPointcut 构造正则表达式切点
+	* 使用正则表达式 切点切面 org.springframework.aop.support.RegexpMethodPointcutAdvisor
+	1)  创建被代理对象 （没有接口 的类 ）
+	 OrderDAO
+	2)  增强 （编写环绕通知）
+	  MyMethodInterceptor
+	3） 通过配置 ProxyFactory 为目标对象创建代理
+	<!-- 定义切点切面 -->
+	<bean id="myadvisor" class="org.springframework.aop.support.RegexpMethodPointcutAdvisor">
+		<!-- 正则表达式规则 -->
+		<property name="pattern" value=".*"></property>
+		<property name="advice" ref="mymethodinterceptor"></property>
+	</bean>
+
+	<!-- 创建代理 -->
+	<bean id="orderDAOProxy" class="org.springframework.aop.framework.ProxyFactoryBean" >
+		<!-- 目标 -->
+		<property name="target" ref="orderDAO"></property>
+		<!-- 针对类代理 -->
+		<property name="proxyTargetClass" value="true"></property>
+		<!-- 增强 -->
+		<property name="interceptorNames" value="myadvisor"></property>
+	</bean>
+
+正则表达式案例
+	cn\.itcast\.aop\.d_pointcutadvisor\.OrderDAO\.save.*   ---- 执行OrderDAO 的save方法
+	.*save.*  ----- 包含save方法
+	<property name="patterns" value=".*save.*,.*delete.*"></property> ---- 同时增强save和delete方法
+
+5、 自动代理
+	使用ProxyFactoryBean 创建代理，需要为每个Bean 都配置一次 ，非常麻烦
+	自动代理原理： 根据xml中配置advisor的规则，得知切面对哪个类的哪个方法进行代理 （切面中本身就包含 被代理对象信息） ，就不需要ProxyFactoryBean ，使用BeanPostProcessor 完成自动代理
+
+BeanNameAutoProxyCreator 根据Bean名称创建代理
+DefaultAdvisorAutoProxyCreator 根据Advisor本身包含信息创建代理
+* AnnotationAwareAspectJAutoProxyCreator 基于Bean中的AspectJ 注解进行自动代理
+
+1) BeanNameAutoProxyCreator
+	<!-- 第一种 BeanName自动代理  -->
+	<!-- 后处理Bean 不需要配置 id -->
+	<bean class="org.springframework.aop.framework.autoproxy.BeanNameAutoProxyCreator">
+		<!-- 对所有DAO结尾Bean 进行代理 -->
+		<property name="beanNames" value="*DAO"></property>
+		<!-- 增强 -->
+		<property name="interceptorNames" value="mymethodinterceptor"></property>
+	</bean>
+
+*** 自动代理和ProxyFactoryBean 本质区别 ：
+	ProxyFactoryBean， 先有被代理对象， 传递ProxyFactoryBean，创建代理
+	自动代理 ， 在Bean构造过程中， 使用后处理Bean 创建代理，返回构造完成对象就是代理对象
+
+2） DefaultAdvisorAutoProxyCreator
+	基于切面信息进行代理
+
+	<!-- 切面 -->
+	<bean id="myadvisor" class="org.springframework.aop.support.RegexpMethodPointcutAdvisor">
+		<!-- 切点拦截信息 -->
+		<property name="patterns" value="cn\.itcast\.aop\.d_pointcutadvisor\.OrderDAO\.save.*"></property>
+		<!-- 增强 -->
+		<property name="advice" ref="mybeforeadvice"></property>
+	</bean>
+
+	<!-- 第二种 基于切面信息自动代理  -->
+	<bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator"></bean>
+
+====================================================================================================================================
+四、 使用AspectJ 实现AOP *****
+AspectJ是一个面向切面的框架，它扩展了Java语言。AspectJ定义了AOP语法所以它有一个专门的编译器用来生成遵守Java字节编码规范的Class文件。
+
+Spring2.0之后 为了简化 AOP编程，支持AspectJ 技术
+@AspectJ 是AspectJ1.5新增功能，通过JDK5注解技术，允许直接在Bean类中定义切面
+
+新版本Spring框架，建议使用AspectJ方式来开发AOP ，而不需要使用传统 Spring AOP 编程
+
+1、 基于@AspectJ 编程
+	1） 下载 导入 aspectJ 开发包 (AspectJ 依赖 AOP 的 jar包 )
+	AspectJ开发包 com.springsource.org.aspectj.weaver-1.6.8.RELEASE.jar
+	导入spring 整合 aspectj 的jar包 spring-aspects-3.2.0.RELEASE.jar
+
+	2） 编写Spring配置文件  （需要aop名称空间）
+		使用 <aop:aspectj-autoproxy />  配置自动代理
+		* 底层 <bean class="... AnnotationAwareAspectJAutoProxyCreator" />
+
+	3) @AspectJ 常用注解
+		@Aspect 定义切面
+	通知类型
+		@Before 前置通知，相当于BeforeAdvice
+		@AfterReturning 后置通知，相当于AfterReturningAdvice
+		@Around 环绕通知，相当于MethodInterceptor
+		@AfterThrowing抛出通知，相当于ThrowAdvice
+		@After 最终final通知，不管是否异常，该通知都会执行
+		@DeclareParents 引介通知，相当于IntroductionInterceptor (不要求掌握)
+
+	4） 切点表达式定义
+		切点使用指定哪些连接点 会被增强 ， 通过execution函数，可以定义切点的方法切入
+		语法： execution(<访问修饰符>?<返回类型><方法名>(<参数>)<异常>)
+	例如：
+		execution(public * *(..)) 匹配所有public修饰符 任何方法
+		execution(* cn.itcast.service.HelloService.*(..))  匹配HelloService类中所有方法
+		execution(int cn.itcast.service.UserService.regist(..))  匹配UserService中int返回类型 regist方法
+		execution(* cn.itcast.dao..*(..))  匹配cn.itcast.dao包下 （包含子包） 所有类 所有方法
+		execution(* cn.itcast.dao.*(..)) 不包含子包
+		execution(* cn.itcast.dao.GenericDAO+.*(..))  匹配GenericDAO 所有子类 或者 实现类 所有方法
+
+
+开发步骤
+	第一步 ： 导入jar、 自动代理
+	第二步 ： 编写被代理对象
+		UserDAO
+	第三步 ： 编写切面类
+		@Aspect
+		// 声明当前类是一个切面类
+		public class MyAspect {
+			// 前置增强
+			@Before("execution(* cn.itcast.aspectj.a_annotation.UserDAO.*(..))")
+			public void before1() {
+				System.out.println("前置增强 1 ...");
+			}
+
+			@Before("execution(* cn.itcast.aspectj.a_annotation.UserDAO.*(..))")
+			public void before2() {
+				System.out.println("前置增强2 ...");
+			}
+		}
+	第四步： 配置applicationContext.xml 注册被代理对象 和 切面类
+			<!-- 被代理目标 -->
+			<bean id="userDAO" class="cn.itcast.aspectj.a_annotation.UserDAO"></bean>
+
+			<!-- 切面 -->
+			<bean id="myaspect" class="cn.itcast.aspectj.a_annotation.MyAspect"></bean>
+
+@AspectJ 支持通知类型详解 ：
+	第一种 前置通知 @Before  ： 前置通知不能拦截目标方法执行 ， 每个前置通知方法接收JoinPoint
+		* JoinPoint  引包 org.aspectj.lang.JoinPoint
+		* JoinPoint  获得拦截增强方法信息
+	第二种 后置通知 @AfterReturning ： 后置通知，在目标方法执行，返回后 调用增强代码
+		* 通过 returning 获得目标方法返回值
+	// 后置增强
+	@AfterReturning(value = "execution(* cn.itcast.aspectj.a_annotation.UserDAO.update(..))", returning = "returnValue")
+	// returnValue 是代理方法 ，参数名， 用来获得目标业务方法执行后返回值
+	public void afterReturning(Object returnValue) {
+		System.out.println("后置增强.... 获得方法返回值：" + returnValue);
+	}
+
+	第三种 环绕通知 @Around : 在目标方法前后增强 ，阻止目标方法执行
+		* 参数为ProceedingJoinPoint 可以调用拦截目标方法执行
+	// 环绕增强
+	@Around("execution(* cn.itcast.aspectj.a_annotation.UserDAO.search(..))")
+	// 可以阻止目标方法执行，通过参数
+	public Object around(ProceedingJoinPoint proceedingJoinPoint)
+			throws Throwable {
+		System.out.println("环绕前增强...");
+		Object result = proceedingJoinPoint.proceed();// 执行目标方法
+		System.out.println("环绕后增强...");
+		return result;
+	}
+	如果 不写 proceedingJoinPoint.proceed(); 目标方法就无法执行
+
+	第四种 抛出通知 @AfterThrowing : 在方法出现异常后，该方法获得执行
+		* 在方法没有错误时，不会得到执行
+	// 抛出增强
+	@AfterThrowing(value = "execution(* cn.itcast.aspectj.a_annotation.UserDAO.search(..))", throwing = "e")
+	// throwing 用来指定异常对象 参数名称
+	public void afterThrowing(Throwable e) {
+		System.out.println("不好了，出问题了, " + e.getMessage());
+	}
+
+	第五种 最终通知 @After : 不管目标方法是否存在异常，都将执行 类似finally 代码块
+	// 最终增强 ，无论目标方法是否有异常，都必须执行
+	@After("execution(* cn.itcast.aspectj.a_annotation.UserDAO.search(..))")
+	public void after() {
+		System.out.println("这是必须执行的代码 .....");
+	}
+
+@Pointcut 切点定义
+	在通知上定义切点表达式，会造成一些切点表达式重复
+	在每个通知内定义切点，会造成工作量大，不易维护，对于重复的切点，可以使用@Poingcut进行定义
+
+	格式： private void 无参数方法，方法名为切点名
+	@Pointcut("execution(* cn.itcast.aspectj.a_annotation.UserDAO.search(..))")
+	private void mypointcut() {}
+
+	应用切点的通知
+	@After("MyAspect.mypointcut()")
+	public void after() {
+		System.out.println("这是必须执行的代码 .....");
+	}
+	* 在Aspect中 可以定义 多个切点
+
+面试题 ： advisor 和 aspect 区别 ？
+	advisor 是 spring 中 aop定义切面，通常由一个切点和一个通知组成
+    aspect 是规范中切面 ， 允许由多个切点和 多个通知组成
+
+2、 基于XML配置 AspectJ 编程
+     1） 定义被代理对象 ProductDAO
+     2） 定义切面 MyAspect
+
+     3） 编写Advice增强方法，在xml配置
+		前置通知
+			public void before() {
+				System.out.println("前置增强....");
+			}
+			<aop:config>
+				<!-- 定义切面 -->
+				<aop:aspect ref="myAspect">
+					<!-- 切点 -->
+					<aop:pointcut expression="execution(* cn.itcast.aspectj.b_xml.ProductDAO.*(..))" id="mypointcut"/>
+					<!-- 通知 -->
+					<aop:before method="before" pointcut-ref="mypointcut"/>
+				</aop:aspect>
+			</aop:config>
+		后置增强
+			// 后置增强 （返回值）
+			public void afterReturing(Object returnVal) {
+				System.out.println("后置增强，返回值： " + returnVal);
+			}
+
+			<aop:after-returning method="afterReturing" returning="returnVal" pointcut-ref="mypointcut"/>
+			returning 指定方法代表返回值参数名
+		环绕增强
+			public Object around(ProceedingJoinPoint proceedingJoinPoint)
+					throws Throwable {
+				System.out.println("环绕前增强...");
+				Object result = proceedingJoinPoint.proceed();
+				System.out.println("环绕后增强....");
+				return result;
+			}
+
+			<aop:around method="around" pointcut-ref="mypointcut"/>
+		异常通知
+			public void afterThrowing(Throwable ex) {
+				System.out.println("发生异常，原因： " + ex.getMessage());
+			}
+
+			<aop:after-throwing method="afterThrowing" throwing="ex" pointcut-ref="mypointcut"/>
+		最终通知
+			public void after() {
+				System.out.println("最终通知....");
+			}
+			<aop:after method="after" pointcut-ref="mypointcut"/>
+
+问题：
+	1、 AOP的思想是什么 ？
+	2、 struts2 的拦截器机制使用 AOP的思想？ 能说说吗？
+	3、 AOP在开发中能实现哪些功能呢？
+	4、 使用AOP 实现监控业务层方法运行时间？ 你会吗？
+
+================================================================================================================================
+五、 Spring JdbcTemplate 使用
+1 、 Spring 提供 不同持久化技术 模板工具类
+JDBC  ----  org.springframework.jdbc.core.JdbcTemplate
+Hibernate3.0  --- org.springframework.orm.hibernate3.HibernateTemplate
+IBatis(MyBatis)	--- org.springframework.orm.ibatis.SqlMapClientTemplate
+JPA	--- org.springframework.orm.jpa.JpaTemplate
+
+JdbcTemplate 是用来简化JDBC操作的 ， 操作和Apache DbUtils 框架非常类似
+
+
+2、 快速入门
+   步骤一 ： 导入jar包
+	在Spring 最基本jar包 基础上， 导入JDBC模板开发包
+		spring-jdbc-3.2.0.RELEASE.jar  --- 存放JdbcTemplate 工具类
+		spring-tx-3.2.0.RELEASE.jar   ---- 进行事务管理
+	操作数据库 别忘了驱动
+		mysql-connector-java-5.1.13-bin.jar ----数据库连接驱动
+
+	步骤二 ：编写配置文件
+		1） 创建连接池
+		2） 构造jdbcTemplate对象
+		3） 执行SQL语句
+步骤二的实现可以分为两种情况：
+
+ *** 情况一：不使用xml 配置数据库连接池（愚蠢的做法）
+		代码实现：
+			public void demo1() {
+
+				// 1 构造jdbcTemplate 必须 数据库连接池
+				// 内置 连接池 DriverManagerDataSource
+
+				DriverManagerDataSource dataSource = new DriverManagerDataSource();
+				dataSource.setDriverClassName("com.mysql.jdbc.Driver");
+				dataSource.setUrl("jdbc:mysql:///spring3day2");
+				dataSource.setUsername("root");
+				dataSource.setPassword("abc");
+
+
+				// 2、使用连接池构造 jdbcTemplate
+				JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+
+				// 3、操作数据库
+				jdbcTemplate.execute("create table user(id int, name varchar(20))");
+			}
+
+*** 情况二、使用xml 配置数据库连接池（明智的选择）
+	常用数据源
+	* Spring 数据源实现类 DriverManagerDataSource
+		<bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+			<property name="driverClassName" value="com.mysql.jdbc.Driver"></property>
+			<property name="url" value="jdbc:mysql:///spring3day2"></property>
+			<property name="username" value="root"></property>
+			<property name="password" value="abc"></property>
+		</bean>
+	* DBCP 数据源 BasicDataSource
+		导入jar包
+		com.springsource.org.apache.commons.dbcp-1.2.2.osgi.jar
+		com.springsource.org.apache.commons.pool-1.5.3.jar
+
+		<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource">
+			<property name="driverClassName" value="com.mysql.jdbc.Driver"></property>
+			<property name="url" value="jdbc:mysql:///spring3day2"></property>
+			<property name="username" value="root"></property>
+			<property name="password" value="abc"></property>
+		</bean>
+
+
+	* C3P0 数据源  ComboPooledDataSource （重点掌握）
+		导入jar包
+		com.springsource.com.mchange.v2.c3p0-0.9.1.2.jar
+
+		<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+			<property name="driverClass" value="com.mysql.jdbc.Driver"></property>
+			<property name="jdbcUrl" value="jdbc:mysql:///spring3day2"></property>
+			<property name="user" value="root"></property>
+			<property name="password" value="abc"></property>
+		</bean>
+
+4、 外部属性文件引入
+	在Spring 直接修改常用属性，不方便，可以将属性抽取出来 建立单独 properties 文件，在Spring 中引入properties
+
+在Spring的applicationContext.xml 引入properties 有两种写法
+
+写法一 ：
+	<bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+          <property name="location" value="classpath:jdbc.properties"></property>
+	</bean>
+
+将连接池配置参数，使用 ${属性key}
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+		<property name="driverClass" value="${jdbc.driver}"></property>
+		<property name="jdbcUrl" value="${jdbc.url}"></property>
+		<property name="user" value="${jdbc.user}"></property>
+		<property name="password" value="${jdbc.password}"></property>
+	</bean>
+
+写法二：
+	<context:property-placeholder location="classpath:jdbc.properties">
+
+5、 使用JdbcTemplate 实现CURD 操作
+	UserDAO 实现数据库操作，必须要使用 JdbcTemplate, Spring 将jdbcTemplate 注入 UserDAO
+
+1） Spring 为每种持久化技术 提供一个支持类
+	支持类作用，在DAO 中注入 模板工具类
+	JDBC ：	org.springframework.jdbc.core.support.JdbcDaoSupport
+	Hibernate 3.0 ：org.springframework.orm.hibernate3.support.HibernateDaoSupport
+	iBatis ：org.springframework.orm.ibatis.support.SqlMapClientDaoSupport
+
+用户自己编写DAO 只需要继承 JdbcDaoSupport， 就可以注入 JdbcTemplate
+
+2)  通过jdbcTemplate 提供 int update(String sql, Object... args)  实现增加 、修改 、删除
+
+3)  简单查询，返回原始数据类型， String类型
+	String sql = "select count(*) from user";   //  int queryForInt(String sql)
+	String sql = "select name from user where id = ? "; // <T> T queryForObject(String sql, Class<T> requiredType, Object... args)
+
+4） 复杂查询
+	JdbcTemplate 没有handler， 手动完成对象封装
+
+编写实体类 RowMapper
+	class UserRowMapper implements RowMapper<User> {
+		@Override
+		public User mapRow(ResultSet rs, int rowNum) throws SQLException {
+			// rs 已经指向每一条数据，不需要自己调用 next，将rs指向数据 转换 User对象
+			User user = new User();
+			user.setId(rs.getInt("id"));
+			user.setName(rs.getString("name"));
+			return user;
+		}
+	}
+
+查询单个对象  <T> T queryForObject(String sql, RowMapper<T> rowMapper, Object... args)
+	return this.getJdbcTemplate().queryForObject(sql, new UserRowMapper(),id);
+
+查询所有对象List集合 <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args)
+ 	return this.getJdbcTemplate().query(sql, new UserRowMapper());
+
+==================================================================================================================
+总结：
+1、 AOP概述 ： 横向抽取机制和纵向继承 ， AOP术语 （掌握）
+2、 AOP 底层实现 ： JDK动态代理 和 CGLib 动态代理 (了解)
+3、 使用ProxyFactoryBean 创建代理 （了解）
+	无切点切面
+	带有切点切面
+4、 掌握自动代理如何实现 ---- 后处理Bean ，在Bean构造过程中完成代理
+5、 注解 实现 AspectJ (掌握)
+	@Aspect
+	@Pointcut
+
+	@Before @AfterReturning  @Around @AfterThrowing @After 必须
+	**** 重点使用  @Around 环绕增强 （日志、运行时间、权限）
+6、 XML 实现AspectJ (掌握)
+
+7、 JdbcTemplate  （掌握）
+	数据库连接池配置
+	外部属性文件
+	增删改查DAO
+
+AOP 练习： 对UserDAO 每个方法，进行运行时间统计，使用log4j技术，将方法运行时间，写入日志文件中
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

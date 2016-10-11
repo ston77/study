@@ -1,0 +1,209 @@
+
+1、 导入工程
+建议新建工程，覆盖src和WebRoot （如果eclipse 将WebRoot 复制 WebContent ）
+
+2、 功能分析 ---- 物流系统 仓储管理
+功能 
+  1） 登陆
+  2） 仓库 增删改查 
+  3） 货物入库
+  4） 货物出库
+  5） 货物库存管理 ---- 货物库存信息查询
+  6） 进出库历史记录查询 
+  
+表结构说明
+	Userinfo是用户表。
+	Store为仓库表。
+	Goods为货物表。
+	History是出入库历史记录表。
+
+仓库和货物 一对多 ， 一个仓库 存放多种货物 
+货物和进出库记录 一对多，一种货物可以存在多条进出库记录
+
+第一天 	
+  1） 登陆
+  2） 仓库 增删改查 
+
+第二天
+  3） 货物入库
+  4） 货物出库
+  5） 货物库存管理 ---- 货物库存信息查询
+  6） 进出库历史记录查询 
+
+3、 创建数据库
+创建新数据库 ： create database sshexec;
+创建新的用户 ： create user angel@localhost identified by 'angel';
+        授权 ： grant all on sshexec.* to angel@localhost ;
+
+删除用户 : drop user angel@localhost; 
+
+导入建表sql 
+
+4、 搭建工程环境， 导入jar包和配置文件 ，整合ssh 
+只需要 覆盖src 和 WEB-INF 
+
+applicationContext.xml 
+	1） 引入外部属性文件 jdbc.properties
+	2） 使用c3p0 定义连接池
+	3） 定义sessionFactory Bean 配置hibernate
+	4） 基于注解事务管理
+
+创建package 
+cn.itcast.store.domain 实体类
+cn.itcast.store.dao  数据层
+cn.itcast.store.service 业务层
+cn.itcast.store.web.action 表现层
+cn.itcast.store.utils 工具类
+
+修改加载hbm文件路径，配置applicationContext.xml
+	<property name="mappingDirectoryLocations">
+			<list>
+				<value>classpath:cn/itcast/store/domain</value>
+			</list>
+	</property>
+
+5、 编写PO类 和 hbm映射 
+	逆向表 生成PO 和 hbm 映射
+	
+======================================================================================================================
+功能一 ： 登陆功能 
+   1） login.jsp  将页面 form  重构 <s:form > 
+   2） 编写LoginAction  
+		服务器数据校验 ：表单校验 struts2 xml配置校验 （结合国际化显示）
+		客户端数据校验 ：表单校验 jQuery validator 插件 
+			<script type="text/javascript" src="${pageContext.request.contextPath }/js/jquery-1.8.3.js"></script>
+			<script type="text/javascript" src="${pageContext.request.contextPath }/js/jquery.validate.js"></script>
+			<script type="text/javascript" src="${pageContext.request.contextPath }/js/jquery.metadata.js"></script>
+			<script type="text/javascript" src="${pageContext.request.contextPath }/js/message_zh_CN.js"></script>
+		
+			$(function(){
+				// 添加客户端校验
+				$("#loginForm").validate();
+			});
+			
+			<s:textfield name="name" cssClass="tx {required:true,rangelength:[3,12]}" maxlength="15" size="15"></s:textfield>
+		
+	3) 在LoginAction 注入Service （将Action 交给Spring 管理）
+		将Service注入Action
+		将DAO注入Service （Service要通过@Transactional注解 进行事务管理）
+		将SessionFactory注入DAO 
+		
+		<!-- 登陆功能 -->
+		<bean id="loginAction" class="cn.itcast.store.web.action.LoginAction" scope="prototype">
+			<property name="userinfoService" ref="userinfoService"></property>
+		</bean>
+		
+		<bean id="userinfoService" class="cn.itcast.store.service.UserinfoService">
+			<property name="userinfoDAO" ref="userinfoDAO"></property>
+		</bean>
+		
+		<bean id="userinfoDAO" class="cn.itcast.store.dao.UserinfoDAO">
+			<!-- 注入sessionFactory -->
+			<property name="sessionFactory" ref="sessionFactory"></property>
+		</bean>
+	
+    4） DAO进行登录时，密码需要md5 加密 
+		使用 MD5Utils 
+	插入admin数据 ： insert into userinfo values("eterwt5eywt32453453dfdf",'admin',md5('admin'));	
+
+功能二 ： 仓库管理
+   1、 添加仓库 
+   jsps/store/add.jsp 重构 <s:form> 
+   提交表单 ---- store_add 
+   
+   编写Action Service DAO
+     ** 将SessionFactory注入DAO ，将DAO注入Service ，Service添加事务管理， 将Service注入Action
+	
+	2、 仓库列表查询功能 
+	在主页左侧菜单 ，点击仓库管理， 访问Action ，将所有仓库信息查询出来， 保存值栈中，在jsp显示 
+	
+	将jsps/main.jsp 仓库管理链接，指向Action 
+		<s:a action="store_list" namespace="/" target="content" id="left1002">[仓库管理]</s:a>
+	
+	将查询几个保存值栈，在jsps/store/store.jsp 遍历值栈，显示内容
+								<s:iterator value="stores" var="store">
+										<tr>
+											<td><s:property value="#store.name"/> </td>
+											<td><s:property value="#store.addr"/> </td>
+											<td><s:property value="#store.manager" /> </td>
+											...	
+										</tr>
+								</s:iterator>
+	
+	3、 仓库删除功能 
+	删除功能，将对应记录id 传递服务器端，服务器根据id进行删除 
+	在jsps/store/store.jsp 中为每个删除链接，拼接对应仓库id
+		<s:a action="store_delete" namespace="/">删除
+				<s:param name="id" value="#store.id"></s:param>
+		</s:a>
+	删除仓库，可能出现 仓库中含有货物 情况
+	   1)  将货物删除，再删除仓库  ----- 配置级联删除，删除持久对象
+	   2)  将货物的外键设置null， 再删除仓库  ---- 直接删除脱管对象
+	   3)  提示用户，有货物不能删除  ---- 先查询是否有货，如果有货，不进行删除 
+	 
+	为删除链接，添加js确定效果 
+		// 删除链接确认效果
+		$(".delLink").click(function(event){
+			var isConfirm = window.confirm("确认删除吗？");
+			if(!isConfirm){
+				// 阻止默认事件，阻止链接
+				event.preventDefault();
+			}
+		});
+	
+	4、仓库修改功能 
+	先根据id 查询数据，回显form表单中， 修改form数据提交完成修改 
+	   1） 在jsps/store/store.jsp 中为修改链接，传递仓库id 
+			<s:a action="store_editview" namespace="/" >修改
+				<s:param name="id" value="#store.id"></s:param>
+			</s:a>
+	   2） 在form回显数据，修改表单，存在隐藏域 放修改仓库id 
+	   3） 提交form 完成修改 
+	 
+	
+	   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

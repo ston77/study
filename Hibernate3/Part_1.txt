@@ -1,0 +1,293 @@
+一、什么是Hibernate 
+Hibernate是轻量级JavaEE应用的持久层解决方案，是一个关系数据库ORM框架
+*（struts2 是轻量级JavaEE应用的表现层解决方案 ）
+
+什么关系型数据库 ？  MySQL 、Oracle 、SQLServer 、 DB2  数据采用表方式存储的，表与表之间外键关联
+什么是 ORM ？ Object Relational Mapping, 对象关系映射 
+	ORM 就是通过将Java对象映射到数据库表，通过操作Java对象，就可以完成对数据表的操作
+
+Hibernat 完全ORM的，只需要对 对象进行操作，生成底层SQL语句 ！！！！！
+
+*** echo2 框架（生成HTML） 、 DWR （开发AJAX，生成JS代码）、 Hibernate （操作数据库生成SQL ）
+
+流行数据库框架 
+1、 JPA Java Persistence API  通过注解描述对象与数据表映射关系 （只有接口规范）
+2、 Hibernate 最流行ORM框架，通过对象-关系映射配置，可以完全脱离底层SQL ， Hibernate实现JPA规范 
+3、 MyBatis  本是apache的一个开源项目 iBatis，支持普通 SQL查询，存储过程和高级映射的优秀持久层框架 （企业主流）
+	* MyBaits 并不是完全ORM ， 需要在xml中配置SQL语句
+4、 Apache DBUtils 、Spring JDBCTemplate
+
+SQL语句封装程度 Hibernate > MyBatis > 	Apache DBUtils 、Spring JDBCTemplate
+
+二、 为什么要使用Hibernate 
+Hibernate对JDBC访问数据库的代码做了封装，大大简化了数据访问层繁琐的重复性代码
+Hibernate是一个基于jdbc的主流持久化框架，是一个优秀的orm实现，它很大程度的简化了dao层编码工作
+Hibernate使用java的反射机制，而不是字节码增强程序类实现透明性
+Hibernate的性能非常好，因为它是一个轻量级框架。映射的灵活性很出色。它支持很多关系型数据库，从一对一到多对多的各种复杂关系
+   * Hibernate本身性能并不是很好，存在很多优化手段 （一级缓存、二级缓存、查询缓存、抓取策略）
+  
+
+三、 使用Hibernate框架 快速入门 
+1、 去 http://sourceforge.net/projects/hibernate/files/hibernate3/ 下载 hibernate3 开发包 
+hibernate 是 JBOSS 框架， JBOSS 是 EJB服务器， JBOSS 推出JBPM 工作流 
+企业主流 Hibernate 版本 : hibernate3.x 
+课程以 hibernate3.6.10 讲解 
+
+最新hibernate版本 4.3测试版， hibernate4 和 hibernate3 开发有很多不同 
+
+***** hibernate 还有很多扩展技术 search 、 validator  .... 
+
+下载 hibernate-distribution-3.6.10.Final-dist.zip 
+
+2、 目录结构 
+documentation ：文档
+lib ： 开发jar包
+project ： hibernate源码
+
+hibernate3.jar ： hibernate框架开发核心jar包 
+
+3、 导入jar包 
+hibernate3.jar 核心jar包
+lib/required/*.jar 
+lib/jpa/hibernate-jpa-2.0-api-1.0.1.Final.jar  (用于jpa注解开发，web开发)
+数据库驱动 mysql驱动
+
+=====================================================================================================
+hibernate 3.x版本 默认采用日志技术 slf4j (即简单日志门面（SimpleLoggingFacadeforJava）) ,不是具体的日志解决方案，它只服务于各种各样的日志系统。 
+*  使用slf4j 好处，很容易整合其他日志技术 
+
+企业java开发 最主流日志技术 log4j 
+
+slf4j-api-1.6.1.jar 没有日志实现，只是接口，整合log4j 
+
+导入 slf4j-log4j12-1.7.2.jar  （slf4j对log4j 框架整合 ）
+导入 log4j-1.2.16.jar  （log4j的日志jar包 ）
+
+======================================================================================================
+log4j 是企业主流日志技术  ，是Apache公司提供的 
+1） 什么是日志技术，开发中为什么要用日志技术  
+日志 ： 在系统运行过程中，记录关键信息，记录错误异常信息的技术 
+   *  区分 System.out 和 日志技术 
+   *  System.out 向控制台输入信息，一定输出
+   *  日志技术 存在级别，通过级别控制日志是否输出，输出的详细程度， 输出的目的地（控制台、文件、发送邮件）
+
+使用日志： 主要用于开发过程中调试 和 项目上线后的维护（记录bug）
+
+2） 使用log4j 通过配置文件 ，配置日志框架使用 
+	src/log4j.xml
+	src/log4j.properties (简单)
+
+配置log4j.properties 有三个组件 
+   组件一： 记录器（Loggers）  用来配置日志输出级别，使用哪些输出源  格式： 记录器名 = 级别, 输出源1 , 输出源2 ... 
+		* 一个记录器 指定 多个输出源 
+		log4j.rootLogger=info, stdout    info是日志级别 ， stdout是输出源名称 
+		* log4j提供日志级别 由高到低 ：fatal(致命错误), error(普通错误), warn(警告),info(信息), debug(调试), trace(堆栈 )
+		* log4j记录日志时，只会记录 配置级别更高级别的信息 
+   组件二 ： 输出源（Appenders） 在log4j中可以定义多个输出源 （控制台、日志文件、邮件、数据库 ）
+		* log4j.appender.输出源名称 = 实现类 
+		log4j.appender.stdout=org.apache.log4j.ConsoleAppender 向控制台输出 
+		log4j.appender.file=org.apache.log4j.FileAppender 向文件输出 
+	组件三 ： 布局（Layouts） 在日志中都记录哪些信息 
+		log4j.appender.stdout.layout=org.apache.log4j.PatternLayout 自定义布局
+		log4j.appender.stdout.layout.ConversionPattern=%d{ABSOLUTE} %5p %c{1}:%L - %m%n  自定义布局格式 
+
+3）、 在程序中使用log4j 记录日志 
+	步骤一 ：定义记录器 
+		private static final Logger LOG = Logger.getLogger(Log4jTest.class);
+	步骤二 ：使用 log4j提供每个级别方法 记录日志 
+		LOG.fatal("致命错误");
+		LOG.error("普通错误");
+		LOG.warn("警告信息");
+		LOG.info("普通信息");
+		LOG.debug("调试信息");
+		LOG.trace("堆栈信息");
+	* 常用 ： error、warn、info、debug
+
+=============================================================================================================================
+4、 编写数据表和 实体类 
+create table customer(
+    id int primary key auto_increment,
+	name varchar(20),
+	age int ,
+	city varchar(20)
+);	
+
+public class Customer {
+	private int id;
+	private String name;
+	private int age;
+	private String city;
+	...
+}	
+
+hibernate 完全ORM，只需要操作Customer类对象， 自动生成SQL 操作customer 表 
+* 需要为 实体类 和 数据表 进行关系映射配置 
+	1） 在类所有包，创建 类名.hbm.xml 文件   （Customer.hbm.xml ）
+	2） hibernate3.jar org/hibernate/hibernate-mapping-3.0.dtd
+		配置属性到列映射时，指定类型，类型有三种写法
+			第一种 java类型  java.lang.String
+			第二种 hibernate类型 string
+			第三种 SQL类型 varchar(20)
+	
+5、配置hibernate核心配置文件 
+	在src下创建 hibernate.cfg.xml
+	规则参见 hibernate3.jar /org/hibernate/hibernate-configuration-3.0.dtd	
+
+配置hibernate基本属性，参考 解压目录/project/etc/hibernate.properties 
+	1) JDBC连接属性
+	2）数据库方言
+	3）其它属性
+	4）加载hbm映射文件 
+	
+6、 编程操作hibernate框架（模板）
+// 实例化配置对象，加载配置文件 hibernate.cfg.xml
+Configuration configuration = new Configuration().configure();
+// 创建会话连接工厂
+SessionFactory sessionFactory = configuration.buildSessionFactory();
+// 创建会话	
+Session session = sessionFactory.openSession();
+// 开启事务
+Transaction transaction = session.beginTransaction();
+...  这里可以编写hibernate操作代码逻辑 （********************************************************）
+// 提交事务，释放资源		
+transaction.commit();
+session.close();
+sessionFactory.close();
+
+7、 完成customer表增删改查操作 
+	1） 使用 session对象 save方法 完成 insert 操作
+		session.save(customer);
+	2） 使用 session对象 get或者load  完成根据 id 查询
+		(Customer) session.get(Customer.class, id);
+	3） 使用session对象 update方法 完成 修改操作
+		session.update(customer); 根据id修改其它所有字段内容 （防止修改为null的情况）
+	4） 使用session对象 delete方法 完成 删除操作 
+		session.delete(customer); 根据id删除 
+	5)  查询所有数据 
+		Session对象提供了两个方法可以获得Query对象 --- 完成查询
+			Query createQuery(String queryString)  接受HQL
+			SQLQuery createSQLQuery(String queryString)  接受SQL
+	* createQuery 返回Query对象，接收HQL查询语言 （Hibernate Query Language ） ---- 语法类似SQL，面向类和属性的查询 
+	* 使用HQL查询，面向类和属性，生成底层SQL 返回结果 封装类对象中
+	* 使用SQL查询，面向数据表，SQL无需生成，默认返回结果 每条记录 Object[] ------- 通过 addEntity(Customer.class) 指定将返回数据封装对象
+
+==========================================================================================================================
+二、 Hibernate 核心配置 和 核心API 
+1、 hibernate体系结构 
+hibernate 位于应用程序 和 数据库 之间 ，将数据库底层 完全封装， 应用程序只需要操作 Persistent Objects （持久化对象），通过Hibernate生成SQL语句，完成对 数据表中记录的操作 
+
+hibernate 支持两种核心配置文件 
+	src/hibernate.properties (key-value文件 键值对，主要配置 hibernate基本属性 )
+		hibernate.connection.driver_class=com.mysql.jdbc.Driver
+	src/hibernate.cfg.xml (完成基本属性配置，加载hbm映射文件)
+		<property name="hibernate.connection.driver_class">com.mysql.jdbc.Driver</property>
+		<mapping resource="cn/itcast/domain/Customer.hbm.xml"/> 加载hbm映射
+* hibernate.properties 无法加载 hbm映射 ， 采用properties方式，必须手动编程加载 hbm文件或者 持久化类 
+
+2、 hibernate的常用属性 
+必须属性
+hibernate.dialect   操作数据库方言
+hibernate.connection.driver_class  连接数据库驱动程序
+hibernate.connection.url   连接数据库URL
+hibernate.connection.username  数据库用户名
+hibernate.connection.password   数据库密码
+
+可选属性 
+hibernate.show_sql  true 在控制台上输出SQL语句
+	* hibernate 自己完成的，并没有使用日志系统 ，当关闭日志后，控制台仍然有SQL语句 
+hibernate.format_sql  true  格式化控制台输出的SQL语句
+	* SQL 会自动换行，对于比较长的sql 查看方便 
+	
+hibernate.hbm2ddl.auto  create/create-drop/update/validate  DDL策略
+	* DDL 主要建表语句，和表结构更新语句 
+	create：表示启动的时候先drop，再create (测试人员 准备标准测试数据)
+	create-drop: 也表示创建，只不过再系统关闭前执行一下drop  （测试程序是否正确）
+	update: 这个操作启动的时候会去检查schema是否一致，如果不一致会做scheme更新 （建表，更新表结构【只能加】）
+	validate: 启动时验证现有schema与你配置的hibernate是否一致，如果不一致就抛出异常，并不做更新 
+	
+*** 在产品开发中 update 和 validate 使用较多 	
+
+hibernate.connection.autocommit  true 事务是否自动提交
+	* 用于解决 没有开启事务的操作时，事务如何自动处理 
+	* 默认事务 自动回滚
+
+中午： hibernate入门程序 =======================================================================================================
+
+	
+	
+
+
+
+		
+	
+	
+   
+   
+
+
+
+  
+  
+  
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

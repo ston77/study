@@ -1,0 +1,440 @@
+一、 框架概述
+1、三大框架 ： 是企业主流 JavaEE 开发的一套架构 
+Struts2 + Spring + Hibernate 
+
+2、 什么是框架？为什么要学框架 ？
+框架 是 实现部分功能的代码 （半成品），使用框架简化企业级软件开发 
+学习框架 ，清楚的知道框架能做什么？ 还有哪些工作需要自己编码实现 ？ 
+
+3、 什么是Struts2 ？ 
+Struts2 是一款优秀MVC框架 
+
+MVC：是一种思想，是一种模式，将软件分为 Model模型、View视图、Controller控制器 
+ * MVC由来是web开发 
+
+JavaEE软件三层结构 ： web层（表现层）、业务逻辑层、数据持久层 （sun提供JavaEE开发规范）
+
+================================ JavaEE开发更强调三层结构， web层开发注重MVC 
+
+struts2 就是 web层开发框架，符合MVC模式 
+ * struts1 、webwork 、jsf 、SpringMVC 都是MVC 
+
+4、 Struts2 和 Struts1 关系
+没有关系， Struts2 全新框架，引入WebWork很多技术和思想，Struts2 保留Struts1 类似开发流程 
+ * Struts2 内核 webwork  
+
+Xwork提供了很多核心功能：前端拦截机（interceptor），运行时表单属性验证，类型转换，强大的表达式语言（OGNL – the Object Graph Navigation Language），IoC（Inversion of Control反转控制）容器等
+
+
+二、struts2快速入门 
+1、 下载开发包 
+最新版本 2.3.14.2 
+课程 以 struts2 2.3.7 讲解 
+
+2、 目录结构 
+apps ： struts2官方demo  
+docs :  文档
+lib ： jar包
+src ： 源码 
+
+3、 导入jar包到开发工程 
+只需要导入 apps/struts2-blank.war 中所有jar包  ---- 11 个jar包 
+
+4、 编写页面 
+hello.jsp 请求页面
+<a href="${pageContext.request.contextPath }/hello.action">访问struts2入门</a>
+
+success.jsp 结果页面 
+
+5、在web.xml 配置struts2 前端控制器 （Filter）
+  <filter>
+  	<filter-name>struts2</filter-name>
+  	<filter-class>org.apache.struts2.dispatcher.ng.filter.StrutsPrepareAndExecuteFilter</filter-class>
+  </filter>
+  <filter-mapping>
+  	<filter-name>struts2</filter-name>
+  	<url-pattern>/*</url-pattern>
+  </filter-mapping>
+  
+6、执行struts2过滤器后，读取struts2配置文件，将请求分发
+在src下创建struts.xml 
+    <package name="default" namespace="/" extends="struts-default">
+		<!-- <a href="${pageContext.request.contextPath }/hello.action">访问struts2入门</a> -->
+		<!-- 将请求 分发给一个Action -->
+		<!-- action的name 就是hello.action 去掉扩展名  -->
+		<action name="hello" class="cn.itcast.struts2.demo1.HelloAction"></action>
+    </package>
+
+7、执行目标Action中execute方法 
+
+8、在Action的execute方法中返回 字符串，在struts.xml中配置字符串与页面对应关系
+<result name="executesuccess">/demo1/success.jsp</result>  完成结果页面跳转
+
+
+===========================================================================================================================
+
+
+三、struts2 运行流程分析
+1、 运行流程 
+请求 ---- StrutsPrepareAndExecuteFilter 核心控制器(预处理 执行过滤) ----- Interceptors 拦截器（实现代码功能 ） ----- Action 的execute --- 结果页面 Result 
+
+* 拦截器 在 struts-default.xml定义
+* 执行拦截器 是 defaultStack 中引用拦截器 
+
+---- 通过源代码级别断点调试，证明拦截器是执行 
+
+2、 配置struts.xml 提示问题
+ 如果安装Aptana编辑器 ，请不要用Aptana自带xml编辑器 编写struts2配置文件 
+ struts.xml提示来自于 DTD约束， 
+	<!DOCTYPE struts PUBLIC
+	"-//Apache Software Foundation//DTD Struts Configuration 2.3//EN"
+	"http://struts.apache.org/dtds/struts-2.3.dtd">
+	如果可以上网，自动缓存dtd，提供提示功能
+	如果不能上网，也可以配置本地DTD提示 
+
+*** 导入DTD时，应该和配置DTD版本一致 
+
+3、 关联struts2源码 
+关联 zip包 
+
+4、 Config Brower 插件使用 
+提供在浏览器中查看 struts2 配置加载情况 
+
+将解压struts2/lib/struts2-config-browser-plugin-2.3.7.jar 复制WEB-INF/lib下 
+
+访问 http://localhost:8080/struts2_day1/config-browser/index.action 查看 struts2配置加载情况 	
+
+四、 struts2 常见配置 
+
+
+学习路径 
+1)、 struts.xml常量配置（配置文件顺序）、Action访问（Servlet API）、结果集 （使用Struts2 编写简单案例） 
+2)、 请求数据 
+3)、 响应页面生成 
+
+
+1、 struts2 配置文件的加载顺序 
+struts2 配置文件 由核心控制器加载 StrutsPrepareAndExecuteFilter  (预处理，执行过滤) 
+            init_DefaultProperties(); // [1]   ----------  org/apache/struts2/default.properties 
+            init_TraditionalXmlConfigurations(); // [2]  --- struts-default.xml,struts-plugin.xml,struts.xml
+            init_LegacyStrutsProperties(); // [3] --- 自定义struts.properties 
+
+            init_CustomConfigurationProviders(); // [5]  ----- 自定义配置提供
+            init_FilterInitParameters() ; // [6] ----- web.xml 
+            init_AliasStandardObjects() ; // [7] ---- Bean加载 
+
+		
+结论 ：
+default.properties 该文件保存在 struts2-core-2.3.7.jar 中 org.apache.struts2包里面  （常量的默认值）
+struts-default.xml 该文件保存在 struts2-core-2.3.7.jar  （Bean、拦截器、结果类型 ）
+struts-plugin(插件).xml 该文件保存在struts-Xxx-2.3.7.jar  （在插件包中存在 ，配置插件信息 ）
+
+struts.xml 该文件是web应用默认的struts配置文件 （实际开发中，通常写struts.xml ） ******************************
+struts.properties 该文件是Struts的默认配置文件  (配置常量 )
+web.xml 该文件是Web应用的配置文件 (配置常量 )
+
+* 后加载文件中struts2 常量会覆盖之前加载文件 常量内容 
+
+2、 struts.xml完成Action 相关配置
+ 1）必须要为<action>元素 配置<package>元素  （struts2 围绕package进行Action的相关配置 ）
+	配置package 三个常用属性 
+		<package name="default" namespace="/" extends="struts-default">
+		name 包名称，在struts2的配置文件文件中 包名不能重复 ，name并不是真正包名，只是为了管理Action 
+		namespace 和 <action>的name属性，决定 Action的访问路径  （以/开始 ）
+		extends 继承哪个包，通常开发中继承 struts-default 包 （struts-default包在 struts-default.xml定义 ）
+			* 继承struts-default包后，可以使用 包中定义拦截器和结果类型 
+ 2）Action的通过<action>元素配置 
+	<action name="hello" class="cn.itcast.struts2.demo1.HelloAction">
+	<action>的name 和 <package>的namespace属性 共同决定 Action的访问路径 ！！！！！！！！
+	
+	例如 ：
+		 <package name="default" namespace="/user" extends="struts-default">
+		   <action name="hello" class="cn.itcast.struts2.demo1.HelloAction">
+		 访问路径 /user/hello.action
+ 3) <action> 元素配置默认值 
+    <package> 的namespace 默认值 / 
+	<action> 的class 默认值 ActionSupport 类 
+	<result> 的 name 默认值 success 
+	
+3、 默认Action 和 Action的默认处理类 
+
+1） 默认Action ， 解决客户端访问Action不存在的问题 ，客户端访问Action， Action找不到，默认Action 就会执行 
+    <default-action-ref name="action元素的name" />
+
+2） 默认处理类 ，客户端访问Action，已经找到匹配<action>元素，但是<action>元素没有class属性，执行默认处理类 
+    <default-class-ref class="完成类名" />
+	* 在struts-default.xml 配置默认处理类 ActionSupport 
+
+
+4、 struts2 常量配置 （键值对 properties）
+1） struts2 默认常量 在 default.properties 中配置 
+2） 开发者自定义常量 
+	struts.xml （要求）
+		格式 ： <constant name="struts.devMode" value="true" />
+	struts.properties （要求）
+	    格式 ： struts.devMode = true
+	web.xml 
+	    格式 ： 
+		<filter>
+			<filter-name>struts2</filter-name>
+			<filter-class>org.apache.struts2.dispatcher.ng.filter.StrutsPrepareAndExecuteFilter</filter-class>
+			<init-param>
+				<param-name>struts.devMode</param-name>
+				<param-value>true</param-value>
+			</init-param>
+		</filter>
+
+3） 常用常量
+	<constant name="struts.i18n.encoding" value="UTF-8"/>  ----- 相当于request.setCharacterEncoding("UTF-8"); 解决post请求乱码 
+	<constant name="struts.action.extension" value="action"/>  --- 访问struts2框架Action访问路径 扩展名 （要求）
+		* struts.action.extension=action,, 默认以.action结尾扩展名 和 不写扩展名 都会分发给 Action
+	<constant name="struts.serve.static.browserCache" value="false"/> false不缓存，true浏览器会缓存静态内容，产品环境设置true、开发环境设置false 
+	<constant name="struts.devMode" value="true" />  提供详细报错页面，修改struts.xml后不需要重启服务器 （要求）
+
+5、 struts2 配置文件分离 
+通过 <include file="struts-part1.xml"/> 将struts2 配置文件 拆分 
+
+上午小结 ：
+1、 struts2 快速环境搭建 （入门案例）
+2、 理解struts2 运行流程图 
+3、 配置文件加载顺序 
+4、 Action配置 （Action的访问路径 = 包名称空间 + Action的Name 组成）
+5、 常量配置 
+
+===================================================================================================================================================
+五、 Action的访问 
+HTTP请求 提交 Struts2 StrutsPrepareAndExecuteFilter 核心控制器 ------ 请求分发给不同Action 
+
+1、 让请求能够访问Action  ----- Action书写方式 三种
+第一种 Action可以是 POJO  （（PlainOldJavaObjects）简单的Java对象） ---- 不需要继承任何父类，实现任何接口
+	* struts2框架 读取struts.xml 获得 完整Action类名 
+	* obj = Class.forName("完整类名").newInstance();
+    * Method m = Class.forName("完整类名").getMethod("execute");  m.invoke(obj); 通过反射 执行 execute方法
+
+第二种 编写Action 实现Action接口 
+	Action接口中，定义默认五种 逻辑视图名称 
+	public static final String SUCCESS = "success";  // 数据处理成功 （成功页面）
+	public static final String NONE = "none";  // 页面不跳转  return null; 效果一样
+	public static final String ERROR = "error";  // 数据处理发送错误 (错误页面)
+	public static final String INPUT = "input"; // 用户输入数据有误，通常用于表单数据校验 （输入页面）
+	public static final String LOGIN = "login"; // 主要权限认证 (登陆页面)
+
+* 五种逻辑视图，解决Action处理数据后，跳转页面 	
+
+第三种 编写Action  继承ActionSupport  （推荐）
+   在Action中使用 表单校验、错误信息设置、读取国际化信息 三个功能 
+  
+2、 Action中方法调用 
+	1） 在配置 <action> 元素时，没有指定method属性， 默认执行 Action类中 execute方法
+	   <action name="request1" class="cn.itcast.struts2.demo3.RequestAction1" />
+    2） 在<action> 元素内部 添加 method属性，指定执行Action中哪个方法 
+	   <action name="regist" class="cn.itcast.struts2.demo4.RegistAction" method="regist"/> 执行 RegistAction 的regist方法
+	   * 将多个请求 业务方法 写入到一个Action 类中 
+	<action name="addBook" class="cn.itcast.struts2.demo4.BookAction" method="addBook" ></action>
+	<action name="delBook" class="cn.itcast.struts2.demo4.BookAction" method="delBook" ></action>   
+	
+	3） 使用通配符* ，简化struts.xml配置
+	<a href="${pageContext.request.contextPath }/user/customer_add.action">添加客户</a>
+	<a href="${pageContext.request.contextPath }/user/customer_del.action">删除客户</a>
+	
+	struts.xml
+	<action name="customer_*" class="cn.itcast.struts2.demo4.CustomerAction" method="{1}"></action>   ---  {1}就是第一个* 匹配内容
+
+3、 动态方法调用 （零配置路线）
+访问Action中指定方法，不进行配置 
+   1） 在工程中使用 动态方法调用 ，必须保证 struts.enable.DynamicMethodInvocation = true 常量值 为true 
+   2） 在action的访问路径 中 使用 "!方法名" 
+	页面
+	<a href="${pageContext.request.contextPath }/user/product!add.action">添加商品</a>
+	配置
+	<action name="product" class="cn.itcast.struts2.demo4.ProductAction"></action>
+	执行 ProductAction 中的 add方法 
+
+
+六、在Action中使用Servlet API
+1、 在Action 中解耦合方式 间接访问 Servlet API  --------- 使用 ActionContext 对象
+在struts2 中 Action API 已经与 Servlet API 解耦合 （没有依赖关系 ）
+* Servlet API 常见操作 ： 表单提交请求参数获取，向request、session、application三个范围存取数据 
+
+actionContext = ActionContext.getContext();
+1) actionContext.getParameters(); 获得所有请求参数Map集合 
+2) actionContext.put("company", "传智播客"); / actionContext.get("company") 对request范围存取数据 
+3) actionContext.getSession(); 获得session数据Map，对Session范围存取数据
+4) actionContext.getApplication(); 获得ServletContext数据Map，对应用访问存取数据 
+
+2、 使用接口注入的方式，操作Servlet API （耦合）
+ServletContextAware ： 注入ServletContext对象
+ServletRequestAware ：注入 request对象
+ServletResponseAware ： 注入response对象
+
+* 程序要使用哪个Servlet的对象，实现对应接口 
+
+3、 在Action中直接通过 ServletActionContext 获得Servlet API
+ServletActionContext.getRequest() : 获得request对象 （session）
+ServletActionContext.getResponse() : 获得response 对象
+ServletActionContext.getServletContext() ： 获得ServletContext对象 
+* 静态方法没有线程问题，ThreadLocal 
+
+=================================================================================================================================================
+七、 基于注解的struts2 开发 
+1、 约定  struts2提供默认规则，实现零配置 
+ 1）导入jar包  11个jar  +  struts2-convention-plugin-2.3.7.jar 
+ 2）在web.xml 配置前端控制器 
+ 3）编写页面 
+ 4）插件中 plugin配置文件 
+ <constant name="struts.convention.package.locators" value="action,actions,struts,struts2"/>
+ 编写Action类，必须位于 action,actions,struts,struts2 四个包中 
+ <constant name="struts.convention.action.suffix" value="Action"/>
+ 以Action结尾
+ 
+**** <constant name="struts.convention.result.path" value="/WEB-INF/content/"/> 结果result页面存放位置
+ Action被扫描后，如何确定Action的访问路径的 ？ 
+     cn.itcast.struts2.HelloAction  （HelloAction位于直接位于四个扫描包下，namespace是/，Action的name是hello） ---- /hello.action
+	 cn.itcast.actions.books.BookSearchAction （BookSearchAction 不是直接位于四个扫描包下，namespace是/books, Action的name是book-search）
+		* 访问路径 /books/book-search.action
+	 cn.itcast.struts.user.UserAction 访问 /user/user.action
+	 cn.itcast.estore.action.test.LoginAction  访问 /test/login.action
+	 
+  5) 根据常量配置 结果页面 位于 /WEB-INF/content下 
+	页面命名规则约定： actionName + resultCode + suffix 
+	例如： cn.itcast.struts.user.UserAction ------ /user/user.action 返回 SUCCESS 
+		 结果页面 /WEB-INF/content/user/user-success.jsp --- 找不到 /WEB-INF/content/user/user-success.html --- 找不到 /WEB-INF/content/user/user.jsp
+
+2、 注解 
+ 注解开发第一步 基于约定的自动扫描 
+
+约定只解决Action访问和结果页面跳转问题 
+* 在开发中需要为Action指定拦截器，进行更细节result配置 
+* 约定不够灵活，注解的功能 是和 xml配置方式 等价的 
+
+使用 @Action注解配置访问路径  @Result注解 配置结果页面 
+
+<constant name="struts.convention.classes.reload" value="false" /> Action类文件重新自动加载
+
+@ParentPackage 配置<package> extends 继承哪个包
+@Namespace  配置包名称空间 
+
+
+八、 结果页面的配置
+Action处理请求后， 返回字符串(逻辑视图名), 需要在struts.xml 提供 <result>元素定义结果页面 
+1、 局部结果页面 和 全局结果页面 
+<action name="result" class="cn.itcast.struts2.demo6.ResultAction">
+  			<!-- 局部结果  当前Action使用 -->
+ 			<result name="success">/demo6/result.jsp</result> 
+</action>
+ 
+<global-results>
+			<!-- 全局结果 当前包中 所有Action都可以用-->
+			<result name="success">/demo6/result.jsp</result>
+</global-results>
+
+2、 结果页面跳转类型 
+	* 在struts-default.xml 定义了 一些结果页面类型 
+	* 使用默认type 是 dispatcher 转发 （request.getRequestDispatcher.forward）
+
+1) 	dispatcher ：Action 转发给 JSP
+2)  chain ：Action调用另一个Action （同一次请求）
+	<result name="success" type="chain">hello</result>  hello是一个Action的name 
+3） redirect ： Action重定向到 JSP
+4） redirectAction ：Action重定向到另一个Action 
+	<result name="success" type="redirectAction">hello</result> 
+	
+===========================================================================================================================================	
+struts2 第一天小结 内容	
+1、 struts2 环境搭建 （导入jar包、web.xml、 struts.xml ）
+2、 struts2 运行流程 
+3、 配置文件加载顺序 
+4、 <package> <action> <result> 元素配置 
+5、 Action书写三种方式
+6、 指定method方法调用、通配符、动态方法调用 
+7、 Action访问Servlet API 
+8、 约定、注解 
+
+登陆练习完成
+
+
+    	
+ 
+	
+	
+	
+	
+			
+
+
+
+
+	
+
+  
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

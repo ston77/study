@@ -1,0 +1,435 @@
+
+一、 hibernate 对事务并发处理 
+	事务四个特性 ACID ： 原子性、一致性、隔离性、持久性 
+
+1、隔离性引发问题： 脏读、不可重复读、虚读 、丢失更新 （lost update）
+	* 脏读 ： 一个事务 读取 另一个事务 未提交的数据 
+	* 不可重复读： 一个事务中 连续读取 两次， 第二次读取另一个事务 已经提交 update修改数据 （数据改变）
+	* 虚读 ： 一个事务 读取 另一个事务 已经提交 插入数据 （记录条数改变）
+
+* 丢失更新 ： 两个事务同时修改数据，后提交事务覆盖了先提交事务的结果 
+
+2、数据库为了解决事务的隔离性问题，提供四种隔离级别（不是所有数据库都支持这四种级别）
+	* READ_UNCOMMITED : 读取未提交，引发所有隔离问题
+	* READ_COMMITTED : 读已提交，阻止脏读，发生不可重复读和虚读
+	* REPEATABLE_READ : 重复读 ，阻止脏读、不可重复读，发生虚读
+	* SERIALIZABLE : 串行处理，不允许两个事务 同时操作一个目标数据，根本不存在并发，不存在并发问题  （效率低下）
+
+** 企业开发中主要 READ_COMMITTED （Oracle默认级别）、REPEATABLE_READ （MySQL默认级别）
+
+设置hibernate事务隔离级别
+hibernate.connection.isolation = 4
+1—Read uncommitted isolation
+2—Read committed isolation
+4—Repeatable read isolation
+8—Serializable isolation
+	例如 ： 
+	<!-- 使用 read committed 级别 -->
+	<property name="hibernate.connection.isolation">2</property>
+
+3、 丢失更新如何解决 
+	悲观锁 和 乐观锁 
+悲观锁： 采用数据库内部锁机制，在一个事务操作数据时，为数据加锁，另一个事务无法操作 
+	* 排它锁 （写锁），数据库中每张表只能添加一个排它锁，排它锁与其他锁互斥 
+	* 在修改数据时，自动添加排它锁 
+	* 在查询数据时 添加排它锁 select * from customers for update; 
+
+hibernate中使用悲观锁 
+		Customer customer = (Customer) session.load(Customer.class, 1,LockMode.UPGRADE); // MySQL
+		Customer customer = (Customer) session.load(Customer.class, 1,LockMode.UPGRADE);
+
+* 悲观锁解决丢失更新，效率问题 ， 数据不能同时修改 
+
+乐观锁 ： 与数据库锁无关，在数据表中为数据添加 版本字段，每次数据修改都会导致版本号+1 
+
+hibernate 为Customer表 添加版本字段 
+	1) 在customer类 添加 private Integer version; 版本字段
+	2) 在Customer.hbm.xml 定义版本字段
+		<!-- 定义版本字段 -->
+		<!-- name是属性名 -->
+		<version name="version"></version>
+
+======================================================================================================================
+二、 管理Session 
+1、 hibernate 提供三种管理Session的方式 
+	* Session 对象的生命周期与本地线程绑定 （与ThreadLocal绑定）
+	* Session 对象的生命周期与 JTA 事务绑定 (分布式事务管理)
+	* Hibernate 委托程序管理 Session 对象的生命周期
+		会在程序中获得Session对象，使用Session， 需要手动session.close() 
+
+在hibernate配置文件中 配置 hibernate.current_session_context_class 值 thread （使Session与线程绑定）
+
+2、步骤
+	1） 配置hibernate.cfg.xml
+		<!-- 配置session 与线程绑定 -->
+		<property name="hibernate.current_session_context_class">thread</property>
+	2） 在程序中通过sessionFactory.getCurrentSession() 获得线程绑定Session对象 
+	
+注意： 使用 getCurrentSession 获得与线程绑定Session对象时，在事务关闭时，Session对象也会close 
+
+
+三、 二级缓存
+1、 缓存好处： 将数据库或者硬盘数据 ，保存在内存中，减少数据库查询次数，减少硬盘交互，提高检索效率 
+2、 hibernate的二级缓存
+	hibernate 共有两个级别的缓存 
+	* 一级缓存 ，保存Session中， 事务范围的缓存 
+	* 二级缓存 ，保存SessionFactory ， 进程范围的缓存
+
+SessionFacoty 两部分缓存
+	内置 ： hbm文件配置， 命名查询SQL语句 
+	外置 ： 二级缓存，必须引入第三方缓存插件 才能使用 
+
+3、 二级缓存内部结构学习
+	* 类缓存区域
+	* 集合缓存区域
+	* 更新时间戳区域
+	* 查询缓存区域 
+
+4、 二级缓存并发策略 
+	transactional ： 提供Repeatable Read事务隔离级别 ，缓存支持事务，发生异常的时候，缓存也能够回滚
+	read-write ： 提供Read Committed事务隔离级别， 更新缓存的时候会锁定缓存中的数据
+	nonstrict-read-write ： 导致脏读， 很少使用 
+	read-only： 数据不允许修改 ，只能查询 
+
+* 很少被修改，不是很重要，允许偶尔的并发问题， 放入二级缓存 考虑因素 （二级缓存 监控，是 是否采用二级缓存主要参考指标）
+
+5、 hibernate 支持二级缓存技术 
+	*  EHCache  (主要学习，支持本地缓存，支持分布式缓存)
+	*  OSCache
+	*  SwarmCache
+	*  JBossCache
+
+6、 二级缓存的配置 
+	1） 导入第三方 缓存技术 jar包 
+		ehcache-1.5.0.jar
+		依赖 backport-util-concurrent 和 commons-logging
+	2） 在hibernate.cfg.xml 开启二级缓存 
+		<property name="hibernate.cache.use_second_level_cache">true</property>
+	3） 配置二级缓存技术提供商
+		<property name="hibernate.cache.provider_class">org.hibernate.cache.EhCacheProvider</property>
+	4） 配置缓存数据对象并发策略 
+		使用read-write 并发策略 
+		方式一 在hbm文件配置
+			<class name="cn.itcast.domain.Customer" table="customers" catalog="hibernate3day4" >
+				<!-- 类级别缓存 -->
+				<cache usage="read-write"/>
+				<set name="orders" cascade="all-delete-orphan" inverse="true" >
+					<!-- 关联集合级别缓存 -->
+					<cache usage="read-write"/>	
+				</set>
+			</class>
+		方式二 在cfg文件配置 （集中配置）
+			<!-- 类级别缓存 -->
+			<class-cache usage="read-write" class="cn.itcast.domain.Customer"/>
+			<class-cache usage="read-write" class="cn.itcast.domain.Order"/>
+			<!-- 集合缓存 -->
+			<collection-cache usage="read-write" collection="cn.itcast.domain.Customer.orders"/>
+	5） 在src中 配置 ehcache.xml 
+		将 ehcache-1.5.0 jar包中 ehcache-failsafe.xml 改名 ehcache.xml 放入 src 
+	
+编写程序： 测试二级缓存的存在 
+
+7、 理解类缓存区 数据存储特点 
+	* 从二级缓存区 返回 数据每次 地址都是不同的 （散装数据 ）
+	每次查询二级缓存，都是将散装数据 构造为一个新的对象
+
+** get 、 load 方法都可以 读取二级缓存的数据 ， Query 的 list方法只能存，不能取
+
+8、 理解集合缓存区 数据存储特点
+	注释掉  <class-cache usage="read-write" class="cn.itcast.domain.Order"/> Order 类缓存
+	orders 集合无法缓存 
+	* 集合缓存区 数据缓存 依赖 类缓存区 数据缓存 
+
+** 一级缓存的操作 会同步到二级缓存 
+
+9、 当内存缓存数据过多之后，需要将数据缓存到硬盘上 
+	配置 src/ehcache.xml 
+		* <diskStore path="java.io.tmpdir"/> 配置二级缓存硬盘临时目录位置 
+		* <defaultCache  <!-- 缓存属性配置  -->
+            maxElementsInMemory="10000"
+            eternal="false"
+            timeToIdleSeconds="120"
+            timeToLiveSeconds="120"
+            overflowToDisk="true"
+            maxElementsOnDisk="10000000"
+            diskPersistent="false"
+            diskExpiryThreadIntervalSeconds="120"
+            memoryStoreEvictionPolicy="LRU"
+            />
+defaultCache ， 是默认配置，该属性 对所有缓存数据 都有效
+		<cache name="cn.itcast.domain.Customer"   // 自定义配置，该属性对cn.itcast.domain.Customer类缓存有效
+			maxElementsInMemory="10000"  // 内存中最大对象数量 ，超过数量，数据会被缓存到硬盘 
+            eternal="false" // 是否缓存为永久性 false 不永久
+            timeToIdleSeconds="120"  // 闲置时间，超过时间回收
+            timeToLiveSeconds="120"  // 存活时间，对象不管是否使用，到了时间回收
+            overflowToDisk="true"  // 是否可以缓存到硬盘
+            maxElementsOnDisk="10000000" // 硬盘缓存最大对象数量 
+            diskPersistent="false"  // 当jvm结束时是否持久化对象 true false 默认是false
+            diskExpiryThreadIntervalSeconds="120"  // 指定专门用于清除过期对象的监听线程的轮询时间 
+            memoryStoreEvictionPolicy="LRU" 
+            />
+	
+10 、更新时间戳区域的作用 
+	作用：记录数据最后更新时间，确保缓存数据是有效的 
+更新时间戳其余，记录数据最后更新时间，在使用二级缓存时，比较缓存时间t1 与 更新时间 t2 ， 如果 t2 > t1 丢弃原来缓存数据，重新查询缓存
+
+11、 Query的 iterate 方法 
+  Query的iterate 方法返回 只有OID 代理对象 
+  * 产生查询 id 的SQL 语句 select id from orders; 
+访问每个Order 具体数据时，再生成SQL 查询 ---- > N+1查询 
+	*****  batch-size 无法优化，使用 二级缓存优化 
+
+四、 查询缓存
+	有人称查询缓存 为hibernate 第三级缓存 
+
+* 二级缓存 缓存数据 都是类对象数据 ，数据都是缓存在 "类缓存区域" 
+	二级缓存缓存PO类对象，条件(key)是id
+
+如果查询条件不是id查询， 缓存数据不是PO类完整对象 =====> 不适合使用二级缓存
+
+查询缓存： 缓存查询数据结果， key是查询生成SQL语句  ， 查询缓存比二级缓存功能更加强大 
+
+配置查询缓存步骤
+	1、 配置二级缓存 
+	2、 启用查询缓存 hibernate.cfg.xml 
+		<property name="hibernate.cache.use_query_cache">true</property>
+	3、 必须在程序中指定使用查询缓存 
+		query.setCacheable(true); 
+
+五、 二级缓存 性能监控 
+没有监测和性能参数而进行优化是毫无意义的。Hibernate 为其内部操作提供了一系列的示意
+图，因此可以从 每个 SessionFactory抓取其统计数据。
+
+SessionFactory 提供二级缓存监控方法，用来获得二级缓存命中次数 
+	*  Statistics getStatistics()  返回  Statistics 对象
+	 Statistics 对象提供
+		*  long getQueryCacheHitCount() 获取查询缓存命中次数
+		*  long getQueryCacheMissCount()  获取查询缓存丢失次数
+		*  long getSecondLevelCacheHitCount() 获取二级缓存命中次数 
+		*  long getSecondLevelCacheMissCount() 获取二级缓存丢失次数 
+
+二级缓存监控 设置hibernate属性 
+	* 在配置期间，将 hibernate.generate_statistics设置为 true或 false
+hitCount/(hitCount + missCount) = 命中率 
+
+查询二级缓存后，如果找到 hitCount +1 ，如果没找到 missCount+1 ， 如果一级缓存找到了，就不会去查找二级缓存， hitCount、missCount 不变
+
+=======================================================================================================================
+六 、 继承关系映射 
+Hibernate 允许 将继承关系保存到 数据库中 
+1、 三种继承映射策略 
+	第一种 subclass 父类和子类数据用同一张表保存，引入辨别者列，区分数据是父类数据还是子类数据
+	第二种 join-subclass 父类和子类 数据都是单独一张表，表之间通过外键 表示继承关系 
+	第三种 unions-subclass(了解 ) 父类和子类 都是单独一张表，表之间没有任何 联系 
+
+2、 subclass 元素的继承映射 
+	父类数据 和 子类数据 存放一张表，引入一列 辨别者列（区分数据是否父类还是子类）
+1） 编写 Employee、HourEmployee、SalaryEmployee 
+2） 在继承关系模型中，只需要对父类编写hbm映射就可以了 
+	<hibernate-mapping>
+		<class name="cn.itcast.subclass.Employee" table="employee" catalog="hibernate3day4" discriminator-value="ee">
+			<id name="id">
+				<generator class="identity"></generator>
+			</id>
+			
+			<!-- 定义辨别者列 -->
+			<!-- 该列主要给Hibernate框架使用  -->
+			<discriminator column="etype"></discriminator>
+			<property name="name"></property>
+			
+			<!-- 每个子类 使用 subclass元素配置 -->
+			<subclass name="cn.itcast.subclass.HourEmployee" discriminator-value="he">
+				<property name="rate"></property>
+			</subclass>
+			<subclass name="cn.itcast.subclass.SalaryEmployee" discriminator-value="se">
+				<property name="salary"></property>
+			</subclass>
+		</class>
+	</hibernate-mapping>    
+
+测试添加和查询 
+
+3、 joined-subclass 元素的继承映射
+	为父类数据和子类数据分布建表，公共信息放入父类表，个性信息放入子类表，通过外键关联
+
+*** 使用继承映射，类关系不变的 
+
+<hibernate-mapping>
+	<class name="cn.itcast.joinedsubclass.Employee" table="employee" catalog="hibernate3day4" >
+		<id name="id">
+			<generator class="identity"></generator>
+		</id>
+		<property name="name"></property>
+		
+		<!-- 为每个子类表编写 joined-subclass 元素 -->
+		<joined-subclass name="cn.itcast.joinedsubclass.HourEmployee" table="h_employee">
+			<!-- 配置子类表 外键 -->
+			<!-- eid 是 子类表主键，同时也是外键，引入父类表 id -->
+			<key column="eid"></key>
+			<property name="rate"></property>
+		</joined-subclass>
+		<joined-subclass name="cn.itcast.joinedsubclass.SalaryEmployee" table="s_employee">
+			<key column="eid"></key>
+			<property name="salary"></property>
+		</joined-subclass>
+	</class>
+</hibernate-mapping>  
+
+*** 优先使用 joined-subclass,  如果类信息非常少，也可以使用 subclass 
+
+=======================================================================================================================
+七、 集合映射 
+	在一对多和 多对多中，都使用了集合 Set 
+	* 使用Set集合，在hbm文件中 使用 <set> 配置 ，set集合是无序的，不允许重复 
+
+在实际开发中，经常会使用 有序的集合  List 
+
+在hbm中 使用 <bag> <list> <set> 
+
+Customer {
+   Set<Order> orders ;  ------------>  hbm  <set> 不允许重复，无序
+}
+
+Customer {
+   List<Order> orders ;  ----------->  hbm <list> 允许重复，有序  <bag> 无序 ，允许重复
+}	
+
+bag配置方法 （性能最好 ）：
+	<hibernate-mapping>
+		<class name="cn.itcast.collectionmapping.Author" table="author">
+			<id name="id">
+				<generator class="identity"></generator>
+			</id>
+			<property name="name"></property>
+			
+			<!-- 一对多 -->
+			<bag name="articles">
+				<key column="author_id"></key>
+				<one-to-many class="cn.itcast.collectionmapping.Article"/>
+			</bag>
+		</class>
+	</hibernate-mapping>   
+
+list 配置方法： 
+	原理： 在数据表中 保存数据下标 （维护有序性 ）
+	<hibernate-mapping>
+		<class name="cn.itcast.collectionmapping.Author" table="author">
+			<id name="id">
+				<generator class="identity"></generator>
+			</id>
+			<property name="name"></property>
+
+			<list name="articles" cascade="all">
+				<key column="author_id"></key>
+				<!-- 生成列，article_index 维护顺序 -->
+				<list-index column="article_index"></list-index>
+				<one-to-many class="cn.itcast.collectionmapping.Article"/>
+			</list>
+		</class>
+	</hibernate-mapping>   
+
+	+----+----------+-----------+---------------+
+	| id | title    | author_id | article_index |
+	+----+----------+-----------+---------------+
+	|  1 | 天龙八部 |         1 |             0 |
+	|  2 | 笑傲江湖 |         1 |             1 |
+	+----+----------+-----------+---------------+
+
+=================================================================================
+小结：
+	1、 二级缓存配置 （了解内部结构）
+		* 缓存到硬盘 临时目录
+	2、 查询缓存配置
+	SessionFactory 提供性能统计 
+	
+	3、 丢失更新 悲观锁和乐观锁 （了解）
+	
+	4、Session和Thread绑定 （掌握）
+	
+	5. 继承映射（了解）
+	
+	6、集合映射（掌握）
+	
+	
+	
+
+ 
+ 
+ 
+ 
+		
+		
+
+	
+	
+	
+
+  
+	
+			
+	
+	
+	
+	
+		
+		
+	
+	
+	
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

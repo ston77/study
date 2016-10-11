@@ -1,0 +1,546 @@
+hibernate Part 1-4
+Part 1 ： 环境搭建、 单表的增删改查
+Part 2 ： hibernate 一级缓存、 持久化对象状态和转换、 多表映射操作
+Part 3 ： 多表查询、 抓取策略
+Part 4 ： 事务操作、 二级缓存 、 ( 组件映射、继承映射 )
+
+一、hibernate持久化对象状态(一级缓存)
+持久化对象 Persistent Object  = POJO + hbm映射
+
+1、 持久化对象 的 三种状态 （面试）
+  * transient 瞬时态(临时态、自由态) ： 不存在持久化标识OID，尚未与Hibernate Session关联对象，被认为处于瞬时态，失去引用将被JVM回收
+	OID 就是 对象中 与数据库主键 映射 属性 ，例如 Customer类 id 属性
+  * persistent 持久态 ： 存在持久化标识OID，与当前session有关联，并且相关联的session没有关闭 ,并且事务未提交
+  * detached 脱管态(离线态、游离态) ： 存在持久化标识OID，但没有与当前session关联，脱管状态改变hibernate不能检测到
+
+区分三种状态， 判断对象是否有OID，判断对象是否与Session关联(被一级缓存引用 )
+		// 获得Session
+		Session session = HibernateUtils.openSession();
+		// 开启事务
+		Transaction transaction = session.beginTransaction();
+
+		Book book = new Book(); // 瞬时态(没有OID，未与Session关联)
+		book.setName("hibernate精通");
+		book.setPrice(56d);
+
+		session.save(book);// 持久态(具有OID，与Session关联)
+
+		// 提交事务，关闭Session
+		transaction.commit();
+		session.close();
+
+		System.out.println(book.getId()); // 脱管态(具有 OID，与Session断开关联)
+
+2、 持久化对象状态转换
+参加课件 UML图例 （状态图）
+
+1） 瞬时态对象  通过new获得
+	瞬时--持久  save 、 saveOrUpdate (都是Session)
+	瞬时--脱管  book.setId(1); 为瞬时对象设置OID
+
+2） 持久态对象  get/load 、Query查询获得
+	持久--瞬时  delete  （被删除持久化对象 不建议再次使用 ）
+	持久--脱管  evict(清除一级缓存中某一个对象)、close(关闭Session，清除一级缓存)、clear(清除一级缓存所有对象 )
+
+3） 脱管态对象 无法直接获得
+	脱管--瞬时 book.setId(null); 删除对象OID
+	脱管--持久 update、saveOrUpdate、 lock(过时)
+
+3、 Session中一级缓存
+Hibernate框架共有两级缓存， 一级缓存（Session级别缓存） 、 二级缓存 （SessionFactory级别缓存）
+
+Hibernate Session接口 实现类 SessionImpl 类
+	* private transient ActionQueue actionQueue;  ---- 行动队列
+	* private transient StatefulPersistenceContext persistenceContext; ---- 持久化上下文
+
+持久化对象保存Session 一级缓存中 （一级缓存 引用 持久化对象 地址 ）， 只要Session不关闭，一级缓存存在，缓存中对象 也不会被回收
+
+Session会在一些特定时间点，将缓存中数据flush 到数据库
+   *  Transaction 的 commit（）
+   *  应用程序执行一些查询操作时
+   *  调用 Session 的 flush() 方法
+
+案例一： 证明一级缓存是存在的
+	Book book = (Book) session.get(Book.class, 1); // 第一次查询，缓存中没有
+	System.out.println(book);
+
+	Book book2 = (Book) session.get(Book.class, 1);// 因为第一次查询，对象已经被放入1级缓存，不会查询数据
+	System.out.println(book2);
+*  生成一条SQL语句，返回同一个对象 ，第一次查询生成SQL，查询对象，将对象放入一级缓存，第二次查询，直接从一级缓存获得
+
+案例二 ： 测试Hibernate快照 （深入理解一级缓存 内存结构原理 ）
+    hibernate 向一级缓存放入数据时，同时保存快照数据(数据库备份)，当修改一级缓存数据，在flush操作时，对比缓存和快照，
+	如果不一致，自动更新 （将缓存的内容 同步到数据库， 更新快照）
+
+*  快照区使用，在Session 保存一份 与数据库 相同的数据 ，在session的 flush时， 通过快照区 比较得知 一级缓存数据是否改变，如果改变执行对应 操作（update）
+*  Hibernate中 持久态 对象具有自动更新数据库能力 （持久态对象 才保存在 Session中，才有快照 ）
+
+4、 一级缓存常见操作
+    1） flush ： 修改一级缓存数据 针对内存操作， 需要在session执行flush操作时，将缓存变化同步到数据库
+	     * 只有在 缓存数据 与 快照区 不同时，生成update 语句
+	2） clear ： 清除所有对象 一级缓存
+	3） evict ： 清除一级缓存 指定对象
+
+问题：如何将 id为1 book对象 从一级缓存清除 ？
+
+	4） refresh ：重新查询数据库，更新快照和一级缓存
+
+5 一级缓存 刷出时间点 设置 （FlushMode）
+	ALWAYS 在每次查询时，session都会flush  （不要求 ）
+	AUTO : 在有些查询时，session会flush  （默认）  ---------- 查询、commit 、session.flush
+	COMMIT : 在事务提交时，session会flush   ------- commit 、session.flush
+	MANUAL ：只有手动调用 session.flush 才会刷出  ----  session.flush
+
+刷出条件(时间点严格程度 )
+	MANUAL > COMMIT> AUTO> ALWAYS
+
+6、 session持久化对象 操作方法
+	1) save 将数据保存到数据库 ， 将瞬时对象 转换 持久对象
+	持久化对象，不允许随便修改 OID
+	2) update 更新数据 ，主要用于脱管对象的更新 （持久对象，可以根据快照自动更新 ）， 将脱管对象 转换 持久对象
+		问题一： 调用update，默认直接生成update语句，如果数据没有改变，不希望生成update
+			在hbm文件 <class>元素 添加 select-before-update
+		问题二： 当update，脱管对象变为持久对象， 一级缓存不允许出现相同OID 两个持久对象
+			org.hibernate.NonUniqueObjectException: a different object with the same identifier value was already associated with the session: [cn.itcast.firstcache.Book#1]
+		问题三 ： 脱管对象 OID 在数据表中 不存在，update时，发生异常
+			org.hibernate.StaleObjectStateException: Row was updated or deleted by another transaction (or unsaved-value mapping was incorrect): [cn.itcast.firstcache.Book#20]
+    3） saveOrUpdate , 如果参数是一个瞬时对象 执行save， 如果参数 是一个脱管对象 执行update， 如果参数是持久对象 直接返回
+		判断对象是瞬时对象 ： OID为null ， 在hbm文件中为 <id>元素指定 unsaved-value属性，如果PO对象OID为 unsaved-value 也是瞬时对象
+		<id name="id" unsaved-value="-1">  如果对象 OID为-1 也是瞬时对象
+	4)  get/load
+		如果查询OID 不存在， get方法 返回 null ， load 方法返回代理对象 （代理对象初始化时 抛出 ObjectNotFoundException ）
+    5)  delete 方法
+		方法既可以删除一个脱管对象, 也可以删除一个持久化对象
+		如果删除脱管，先将脱管对象 与 Session 关联，然后再删除
+		执行delete，先删除一级缓存数据，在session.flush 操作时，删除数据表中数据
+
+===============================================================================================================================
+二、 hibernate 关联关系映射 （多表映射配置 和 数据 增加、删除 ）
+1、 系统模型中 实体设计三种关系
+关系型数据库 设计 通常用E-R 绘制
+	概念E-R图也称实体-联系图(EntityRelationshipDiagram)，提供了表示实体类型、属性和联系的方法，用来描述现实世界的概念模型。
+
+实体之间存在 三种关系
+	一对多
+	多对多
+	一对一
+
+不同实体关系 建表原则
+	一对多： 在多个一方添加 一的一方 主键作为外键
+	多对多： 产生中间关系表，引入两个实体主键，作为外键 ，两个主键成为联合主键
+	一对一： 在任意一方 引入对方主键 作为外键  （开发中使用非常少 ）
+
+绘制 E-R图 Vision 画图软件
+
+2、 企业中设计数据库 时，使用PowerDesigner （简称PD）
+  PD 设计软件时，绘制概念图（面向需求）、物理数据表（面向数据库）、 面向对象关系图（面向程序） --- 三种图之间相互转换
+
+瀑布模型软件开发： 需求---分析---设计--- 编码--- 测试 --- 实施维护
+	* 以前开发软件，先设计数据库， 再根据数据库 编写 实体类  （通过表 生成 类 ）
+	* 编写类图 （类结构 和关系） ， 生成数据表
+
+表能够描述实体数据关系，通过对象也可以
+	一对多  (一个A对应多个B )
+	   class A {
+		  // 对应多个B
+		  B[] b 、 List b 、 Set b
+	   }
+
+	   class B {
+		  // 对应一个A
+		  A a
+	   }
+	多对多 （一个A 对应多个B， 一个B 对应多个A ）
+		class A {
+		    Set b;
+		}
+
+		class B {
+			Set a;
+		}
+	一对一
+		class A {
+		   B b;
+		}
+		class B {
+		   A a;
+		}
+下午重点学习 一对多、 多对多  （一对一 作为了解 ）
+
+中午练习:  掌握Session一级缓存，持久化对象三种状态 转换
+=============================================================================================================================
+三、 一对多 关联关系映射
+以 客户Customer 和 订单 Order 为例
+
+1、 一对多关联映射的配置和 Java对象编写
+客户类
+	public class Customer {
+		private Integer id;
+		private String name;
+
+		// 客户对应多个订单
+		private Set<Order> orders = new HashSet<Order>();
+	}
+订单类
+	public class Order {
+		private Integer id;
+		private Double money;
+		private String receiverinfo;
+
+		// 订单关联一个客户
+		private Customer customer;
+	}
+Order.hbm.xml
+	<!-- 多对一 -->
+	<many-to-one name="customer" class="cn.itcast.onetomany.Customer" column="customer_id"></many-to-one>
+	* 使用not-null 设置外键不能为空
+
+Customer.hbm.xml
+	<!-- 一个客户关联多个订单 -->
+	<!-- name 关联订单集合属性名 -->
+	<set name="orders">
+		<!-- 客户关联订单后，在对方表 添加 外键列 -->
+		<!-- column 对方表 外键列 列名 -->
+		<key column="customer_id"></key>
+		<!-- 一对多 -->
+		<!-- class 是 orders 集合元素类型 -->
+		<one-to-many class="cn.itcast.onetomany.Order"/>
+	</set>
+
+案例一： 一对多保存操作
+    session.save(customer);
+	session.save(order1);
+	session.save(order2);
+	// 建立关系
+	customer.getOrders().add(order1);
+	customer.getOrders().add(order2);
+
+	order1.setCustomer(customer);
+	order2.setCustomer(customer);
+
+案例二 ： 保存操作，只保存客户 或者 只保存 订单是否可以
+	默认情况下 异常
+	org.hibernate.TransientObjectException: object references an unsaved transient instance - save the transient instance before flushing: cn.itcast.onetomany.Order
+原因： 持久化对象 关联 瞬时态 对象
+
+在添加用户时，同时将用户关联订单也保存到数据表 （将订单自动保存 ）
+
+级联保存 ： 当一个对象是持久化对象，该对象关联瞬时/脱管 对象，持久态对象 自动对关联对象 进行保存或者更新操作
+	* 保存客户 同时 保存关联订单
+		在Customer.hbm.xml 配置 <set name="orders" cascade="save-update">
+	* 保存订单 同时 保存关联客户
+		在Order.hbm.xml 配置 <many-to-one name="customer" cascade="save-update"></many-to-one>
+
+练习： 对象导航练习
+
+案例三 ： 级联删除
+	删除订单时，关联客户是否 也被删除 ？？？ 删除客户时，订单会不会删除 ？？？
+	* 默认情况下 ，删除客户时，将相关订单外键设置为null ， 完成删除
+    * 如果设置 Order.hbm.xml  中 <manytoone name="customer" not-null="true" /> 必须 设置inverse=true
+
+不允许存在 没有客户的订单 ！！！！  在开发时，需要删除客户时， 级联删除该客户的订单
+	* 配置 Customer.hbm.xml  cascade="delete"
+	* 删除脱管对象无法产生级联删除效果， 必须删除持久对象
+
+案例四 ： 孤儿删除 （孤子删除 ）
+	在一对多模型中，存在父子表关系 ， 例如 客户和订单， 一方通常是父方， 多方通常是子方 ， 不存在没有客户的订单
+
+问题： 解除客户和订单关系时，订单是否有效 ----- 无效
+	对于 无效订单 应该删除， 客户解除和订单关系时，自动删除订单
+
+孤儿删除
+	1） 在Customer.hbm.xml 配置 <set name="orders" cascade="delete-orphan">
+	2） 在程序 customer.getOrders().remove(order);  删除解除关系的订单对象
+
+cascade属性取值， 有JPA规范定义的， Hibernate框架实现JPA规范，对其进行扩展
+	* save-Update 级联保存更新，持久对象 关联瞬时对象 执行save， 关联脱管对象 执行update
+	* delete 级联删除
+	* delete-orphan 主要用于一对多模型，进行孤儿删除
+	* all 除掉delete-orphan外 所有级联关系
+	* all-delete-orphan 包含 all和 delete-orphan
+
+案例五 ： 双向维护 --- 多余的SQL
+	将1号订单 改为 属于 2号客户  ---------- 产生两条SQL语句
+
+不要在一对多模型中，使双方都具有 外键维护能力
+	* 设置inverse属性 --- 单向维护
+	通过inverse属性来设置由双向关联的哪一方来维护表和表之间的关系. inverse=false 的为主动方，inverse=true 的为被动方, 由主动方负责维护关联关系
+
+	* 哪一方设置 inverse=true，代表放弃外键维护能力 ，在实际开发中 通常由多方来维护外键 ， 在一方添加 inverse=true
+
+面试： inverse 和 cascade的区别 ？
+	cascade 进行级联操作，如果配置cascade 对数据进行级联操作，
+	inverse 属性只是针对外键列维护能力 ，如果设置inverse=true，将外键维护交给另一方
+
+小结：
+   1） 一对多存在 父子关系，一方是父方，多方是子方， 子方数据 依赖 父方数据
+   2） 通常将cascade 配置在 父方 (一的一方 客户表)
+		例如： 添加客户时  添加订单， 删除客户时 删除订单 ， 孤儿删除
+   3） 外键方维护权，通常交给多方负责，需要在一方配置 inverse="true"
+	<set name="orders" cascade="all-delete-orphan" inverse="true" >
+
+====================================================================================================================
+四、 多对多 关联关系映射
+以 学生Student 选课 Course 为例
+1、 多对多 hbm映射配置 和 实体类编写
+学生类
+	public class Student {
+		private Integer id;
+		private String sname;
+
+		// 一个学生 可以选 多门课程
+		private Set<Course> courses = new HashSet<Course>();
+	}
+课程类
+	public class Course {
+		private Integer id;
+		private String cname;
+
+		// 一门课程 可以被 多个学生选修
+		private Set<Student> students = new HashSet<Student>();
+    }
+
+Student.hbm.xml
+		<!-- 多对多 -->
+		<!-- name 关联属性名
+			 table 产生中间表 表名
+		-->
+		<set name="courses" table="student_course">
+			<!-- 当前对象 在中间表 产生外键列名 -->
+			<key column="student_id"></key>
+
+			<!-- column 指定集合对应表 在中间表 产生外键列名  -->
+			<many-to-many column="course_id" class="cn.itcast.manytomany.Course"/>
+		</set>
+
+Course.hbm.xml
+		<!-- 多对多 -->
+		<set name="students" table="student_course">
+			<!-- 当前对象 外键列 -->
+			<key column="course_id"></key>
+			<many-to-many column="student_id" class="cn.itcast.manytomany.Student"></many-to-many>
+		</set>
+
+案例一： 测试保存
+	多对多关联映射中，不存在 一对多那样父子表关系
+    在实际开发中，多对多可以不配置 cascade
+* 只有两个对象，建立一次关系，就会向中间表插入一条数据
+	student1.getCourses().add(course1);  // 产生一条 insert
+	course1.getStudents().add(student1); // 产生一条 insert
+解决： 只需要建立一方面 关联，或者在任何一方 添加inverse=true  (推荐)（如果配置了这一选项，则不能在remove的时候删除中间表数据了）
+
+案例二： 测试解除关系，删除中间表数据
+    student.getCourses().remove(course);  从中间表 删除数据
+
+案例三 ：改变学生选课关系
+	student.getCourses().remove(course); 删除选课数据
+	student.getCourses().add(course); 重新选课
+
+案例四： 关羽存在选课记录，关羽数据能否删除
+	可以，先删除关羽所有选课记录，再删除关羽数据
+	* 如果删除课程，先删除选课记录，再删除课程
+
+案例五： 删除课程时，能否将选课学生删除 （在实际中很少用）
+    使用 cascade 级联
+* 多对多 最好不要使用 级联操作
+
+=============================================================================================================================
+五 一对一关联映射 （了解）
+两种方式
+  * 外键关联
+	 类编写相同，表结构不同
+public class Company {
+	private Integer id;
+	private String name;
+
+	private Address address;
+}
+
+public class Address {
+	private Integer id;
+	private String addressinfo;
+
+	private Company company;
+}
+
+=========== 添加外键一方，写 <many-to-one> ， 不加外键一方 写<one-to-one >
+Company.hbm.xml
+<hibernate-mapping>
+	<class name="cn.itcast.onetoonefk.Company" table="company">
+		<id name="id">
+			<generator class="identity"></generator>
+		</id>
+		<property name="name"></property>
+
+		<many-to-one name="address" class="cn.itcast.onetoonefk.Address" column="aid" unique="true"></many-to-one>
+	</class>
+</hibernate-mapping>
+
+Address.hbm.xml
+<hibernate-mapping>
+	<class name="cn.itcast.onetoonefk.Address" table="address">
+		<id name="id">
+			<generator class="identity"></generator>
+		</id>
+		<property name="addressinfo"></property>
+
+		<!--  property-ref 对方 company 生成外键 属性名 -->
+		<one-to-one name="company" class="cn.itcast.onetoonefk.Company" property-ref="address"></one-to-one>
+	</class>
+</hibernate-mapping>
+
+  * 主键关联
+  Address表主键 直接就是 外键，引入Company表主键
+  address表 主键作为外键
+
+Company.hbm.xml
+   <hibernate-mapping>
+	<class name="cn.itcast.onetoonepk.Company" table="company">
+		<id name="id">
+			<generator class="identity"></generator>
+		</id>
+		<property name="name"></property>
+
+		<one-to-one name="address" class="cn.itcast.onetoonepk.Address"></one-to-one>
+	</class>
+   </hibernate-mapping>
+
+Address.hbm.xml
+	<hibernate-mapping>
+		<class name="cn.itcast.onetoonepk.Address" table="address">
+			<!-- 主键关联，id 不是自增，引用company 的主键 -->
+			<id name="id">
+				<!-- class="foreign" 当前表主键 是由外部数据生成的  -->
+				<generator class="foreign">
+					<!-- 由Company属性生成 -->
+					<param name="property">company</param>
+				</generator>
+			</id>
+			<property name="addressinfo"></property>
+
+			<!-- 为address 主键添加 外键约束 -->
+			<one-to-one name="company" class="cn.itcast.onetoonepk.Company" constrained="true"></one-to-one>
+		</class>
+	</hibernate-mapping>
+
+===================================================================================================================
+小结 ：
+1、 持久化对象三种 状态： 瞬时、持久、脱管
+    状态转换
+2、 Session一级缓存 存储原理
+	常见操作 ： flush  clear evict refresh
+
+3、 多表映射 一对多 （配置）
+	理解父子表关系
+	在一方配置 cascade ， inverse="true"
+	级联操作： save-update 、delete、delete-orphan
+
+4、 多表映射多对多  （配置）
+	添加中间表数据， 删除中间表数据
+
+一对多 了解
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,493 @@
+Spring框架
+Part_1： Spring Core IoC 的学习（工厂的Bean装配管理）
+Part_2： Spring AOP 技术 （AspectJ 切面编程）
+Part_3： Spring 事务管理 和 三大框架整合
+Part_4、5 ： 编写三大框架整合综合项目
+
+一、 Spring技术概述
+1、什么是Spring ： Spring是分层的JavaSE/EE full-stack(一站式) 轻量级开源框架
+	* JavaEE 程序在服务器端被分为三层 （Web层【表现层】、业务逻辑层、数据访问层【集成层、持久层】）
+	* struts2 是表现层MVC的框架
+	* hibernate 是数据访问层（持久层）的完全ORM框架
+
+Spring框架中包括JavaEE 三层的 每一层的解决方案 （一站式）
+	* web层  SpringMVC
+	* 业务层 Spring Bean管理、AOP、事务管理
+	* 持久层 Spring JDBCTemplate、 ORM模块（整合其他持久层框架）
+
+2、 Spring的核心 ： IoC 控制反转 和 Aop 面向切面编程
+* 课程以3.2 版本讲解
+
+3、 Spring的由来 ： 作者 Rod Johnson
+	2002年 Expert One-to-One J2EE Design and Development  （分析J2EE开发 使用技术 EJB）
+	2004年 Expert One-to-One J2EE Development without EJB （客观分析J2EE开发需要什么，推出一个新的框架， 后来Spring）
+
+sun 公司在最早J2EE规范中，提供业务层解决方案 EJB
+
+Spring出现就是为了解决JavaEE开发实际问题，轻量级， 相比EJB比较繁重、复杂的解决方案
+
+4、 Spring 框架优点
+* 方便解耦，简化开发
+Spring就是一个大工厂，可以将所有对象创建和依赖关系维护，交给Spring管理
+* AOP编程的支持
+Spring提供面向切面编程，可以方便的实现对程序进行权限拦截、运行监控等功能
+* 声明式事务的支持
+只需要通过配置就可以完成对事务的管理，而无需手动编程
+* 方便程序的测试
+Spring对Junit4支持，可以通过注解方便的测试Spring程序
+* 方便集成各种优秀框架
+Spring不排斥各种优秀的开源框架，其内部提供了对各种优秀框架（如：Struts、Hibernate、MyBatis、Quartz等）的直接支持
+* 降低JavaEE API的使用难度
+Spring 对JavaEE开发中非常难用的一些API（JDBC、JavaMail、远程调用等），都提供了封装，使这些API应用难度大大降低
+
+5、Spring 包括哪些东西？
+   * 核心技术 IoC 和 AOP
+   * 数据访问 （持久层解决方案）
+   * Web层解决方案  SpringMVC
+   * 集成 （整合其他开源框架）
+
+未来五天课程： IoC 、 AOP 、 数据访问、 集成
+
+========================================================================================================================
+二、 Spring 控制反转案例快速入门
+1、下载Spring最新开发包
+http://www.springsource.org/download/community 下载spring3.2 的开发包
+目录结构
+	* docs 存放API和 规范文档
+	* libs 开发jar包
+	* schemas 开发过程中需要导入xml的schema 约束
+
+2、复制Spring开发 jar包到工程
+	复制核心容器包含jar包 （beans、core、context、expression language）
+	spring 的 jar包 需要依赖 commons-logging的 jar （commons-logging 类似 slf4j 是通用日志组件，需要整合 log4j ）
+
+* 提示：spring3.0.X 版本 asm jar包 已经被合并到 spring core包中
+
+3、理解IoC控制反转和DI依赖注入
+IoC Inverse of Control 反转控制的概念，就是将原本在程序中手动创建HelloService对象的控制权，交由Spring框架管理，简单说，就是创建HelloService对象控制权被反转到了Spring框架
+
+DI：Dependency Injection 依赖注入，在Spring框架负责创建Bean对象时，动态的将依赖对象注入到Bean组件
+
+面试题： IoC 和 DI的区别？
+IoC 控制反转，指将对象的创建权，反转到Spring容器 ， DI 依赖注入，指Spring创建对象的过程中，将对象依赖属性通过配置进行注入
+
+4、编写Spring核心配置文件
+在src目录创建 applicationContext.xml
+在 docs\spring-framework-reference\html 找到 xsd-config.html
+
+5、在程序中读取Spring配置文件，通过Spring框架获得Bean，完成相应操作
+加载classpath （src）：
+     new ClassPathXmlApplicationContext("applicationContext.xml");
+加载磁盘路径：
+     new FileSystemXmlApplicationContext("applicationContext.xml");
+创建Spring 核心工厂对象
+
+通过工厂的getBean 获得配置实例对象 (IHelloService) applicationContext.getBean("helloService");
+
+三、 Spring 工厂接口
+	BeanFactory 接口 和 ApplicationContext 接口区别 ？
+	* ApplicationContext 接口时 继承 BeanFactory 接口 ，Spring 核心工厂是BeanFactory ,BeanFactory 采取延迟加载，第一次getBean时才会初始化Bean , ApplicationContext 是会在加载配置文件时 初始化Bean
+	* ApplicationContext是对BeanFactory扩展
+		国际化处理
+		事件传递
+		Bean自动装配
+		各种不同应用层的Context实现
+
+开发中基本都在使用ApplicationContext, web项目使用WebApplicationContext ，很少用到BeanFactory
+	BeanFactory beanFactory = new XmlBeanFactory(new ClassPathResource("applicationContext.xml"));
+	IHelloService helloService = (IHelloService) beanFactory.getBean("helloService");
+	helloService.sayHello();
+
+四、 在MyEclipse 配置Spring的xml文件提示
+	xml需要导入schema约束，约束指向网络路径
+	1、 联网后，自动缓存路径文件到本地，提供提示功能
+	2、 无法联网 ，需要配置 xsd schema文件位置
+		到解压spring/schemas/beans/spring-beans-3.2.xsd
+		选择schema location 方式
+		复制网络路径 http://www.springframework.org/schema/beans/spring-beans.xsd
+
+=========================================================================================================================
+五、 IoC容器装配Bean（xml配置方式）
+1、 Spring 提供配置Bean 三种实例化方式
+	1）使用类构造器实例化(默认无参数)
+		<bean id="bean1" class="cn.itcast.spring.b_instance.Bean1"></bean>
+	2）使用静态工厂方法实例化(简单工厂模式)
+		<bean id="bean2" class="cn.itcast.spring.b_instance.Bean2Factory" factory-method="getBean2"></bean>
+	3）使用实例工厂方法实例化(工厂方法模式)
+		<bean id="bean3Factory" class="cn.itcast.spring.b_instance.Bean3Factory"></bean>
+		<bean id="bean3" factory-bean="bean3Factory" factory-method="getBean3"></bean>
+
+2、 Bean的其它属性配置
+	<bean>元素的id属性 和 name属性的区别
+早期Spring开发中 Bean的 id属性 ，遵守xml语法 id约束
+	* id 的命名要满足XML对ID属性命名规范 必须以字母开始，可以使用字母、数字、连字符、下划线、句话、冒号
+使用name属性，就可以使用很多特殊字符  ， 早期在struts1 和 spring整合
+	<bean name="/login" class="....LoginAction" />  name中含有/ ,使用id会报错
+
+****** 如果元素没有id只有name ，name 属性值可以作为id 使用
+
+	<bean>元素scope属性
+		* scope="singleton" 单例 ，在Spring IoC容器中仅存在一个Bean实例 （默认的scope）
+		* scope="prototype" 多例 ，每次从容器中调用Bean时，都返回一个新的实例，即每次调用getBean()时 ，相当于执行new XxxBean()
+		* scope="request" 用于web开发，将Bean放入request范围 ，request.setAttribute("xxx") ， 在同一个request 获得同一个Bean
+		* scope="session" 用于web开发，将Bean 放入Session范围，在同一个Session 获得同一个Bean
+		* scope="globalSession" 一般用于Porlet应用环境 , 分布式系统存在全局session概念 ，如果不是porlet环境，globalSession 等同于Session
+	在开发中主要使用 scope="singleton"、 scope="prototype"
+
+3、 Bean的生命周期
+	在配置 <bean> 元素，通过 init-method 指定Bean的初始化方法，通过 destroy-method 指定Bean销毁方法
+	*  destroy-method 只对 scope="singleton" 有效
+	*  销毁方法，必须关闭ApplicationContext对象，才会被调用
+		ClassPathXmlApplicationContext applicationContext = new ClassPathXmlApplicationContext("applicationContext.xml");
+		applicationContext.close();
+
+Bean的完整生命周期 （十一步骤）
+1、instantiate bean对象实例化
+2、populate properties 封装属性
+3、如果Bean实现BeanNameAware 执行 setBeanName
+4、如果Bean实现BeanFactoryAware 或者 ApplicationContextAware 设置工厂 setBeanFactory 或者上下文对象 setApplicationContext
+5、如果存在类实现 BeanPostProcessor（后处理Bean） ，执行postProcessBeforeInitialization
+6、如果Bean实现InitializingBean 执行 afterPropertiesSet
+7、调用<bean init-method="init"> 指定初始化方法 init
+8、如果存在类实现 BeanPostProcessor（处理Bean） ，执行postProcessAfterInitialization
+9、执行业务处理
+10、如果Bean实现 DisposableBean 执行 destroy
+11、调用<bean destroy-method="customerDestroy"> 指定销毁方法 customerDestroy
+
+第三步和第四步，使Bean 了解Spring容器
+第五步和第八步，使用BeanPostProcessor 就是钩子函数，作用用来对Bean对象进行扩展
+
+问题： 在userDAO对象所有方法上 添加运行时间监控
+	解决: 使用 BeanPostProcessor 完成
+
+==========================================================================================================================
+4、Spring的Bean属性的依赖注入
+  支持 构造器注入 和 setter 方法注入
+
+第一种 构造器注入 ，通过 <constructor-arg> 元素完成注入
+	<bean id="car" class="cn.itcast.spring.e_di.Car">
+		<!-- 通过构造器参数，完成属性注入 -->
+		<constructor-arg index="0" type="java.lang.String" value="保时捷"></constructor-arg> <!-- 第一个参数 String类型参数 -->
+		<constructor-arg index="1" type="double" value="1000000"></constructor-arg>
+	</bean>
+
+第二种 setter方法注入， 通过<property> 元素完成注入
+	<bean id="car2" class="cn.itcast.spring.e_di.Car2">
+		<!-- 通过 property 元素完成属性注入 -->
+		<property name="name" value="宝马"></property>
+		<property name="price" value="500000"></property>
+	</bean>
+
+* 使用 <property> 元素 ref属性，引入另一个Bean对象，完成Bean之间注入
+	<bean id="employee" class="cn.itcast.spring.e_di.Employee">
+		<property name="name" value="张三"></property>
+		<property name="car2" ref="car2"></property> <!-- ref引用其他Bean的id或者name -->
+	</bean>
+
+* 名称空间 p的使用  （Spring2.5 新特性）
+	spring2.5版本 引入名称空间p， 简化属性注入的配置
+p:<属性名>="xxx" 引入常量值
+p:<属性名>-ref="xxx" 引用其它Bean对象
+	1） 引入p名称空间
+		<beans xmlns="http://www.springframework.org/schema/beans"
+			   xmlns:p="http://www.springframework.org/schema/p"
+			   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+			   xsi:schemaLocation="
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+	2） 改写<property>注入为 p名称空间注入
+		<bean id="car2" class="cn.itcast.spring.e_di.Car2">
+			<!-- 通过 property 元素完成属性注入 -->
+			<property name="name" value="宝马"></property>
+			<property name="price" value="500000"></property>
+		</bean>
+
+		<bean id="employee" class="cn.itcast.spring.e_di.Employee">
+			<property name="name" value="张三"></property>
+			<property name="car2" ref="car2"></property> <!-- ref引用其他Bean的id或者name -->
+		</bean>
+	改写
+		<bean id="car2" class="cn.itcast.spring.e_di.Car2" p:name="宝马" p:price="1000000"></bean>
+		<bean id="employee" class="cn.itcast.spring.e_di.Employee" p:name="李四" p:car2-ref="car2"></bean>
+
+* spring3.0之后引入 spEL 表达式
+	1、 完成对象之间注入
+		<property name="car2" ref="car2"></property>
+		改写为
+		<property name="car2" value="#{car2}"></property>
+	2、 使用另一个Bean属性完成注入
+		<bean id="carInfo" class="cn.itcast.spring.e_di.CarInfo"></bean>
+		<bean id="car2_2" class="cn.itcast.spring.e_di.Car2">
+			<property name="name" value="#{carInfo.name}"></property>
+		</bean>
+	3、 使用另一个Bean方法完成注入
+		<bean id="carInfo" class="cn.itcast.spring.e_di.CarInfo"></bean>
+		<bean id="car2_2" class="cn.itcast.spring.e_di.Car2">
+			<property name="name" value="#{carInfo.name}"></property>
+			<property name="price" value="#{carInfo.caculatePrice()}"></property>
+		</bean>
+
+5、 集合属性的注入
+	spring提供专门标签完成 List、Set、Map、Properties 等集合元素属性注入
+
+1） 注入List （数组）
+	<property name="hobbies">
+			<list>
+				<!-- <value>注入简单类型，<ref />注入复杂类型 -->
+				<value>音乐</value>
+				<value>体育</value>
+			</list>
+	</property>
+2)  注入Set
+	<property name="numbers">
+			<set>
+				<value>10</value>
+				<value>6</value>
+				<value>15</value>
+			</set>
+	</property>
+3） 注入Map
+	<property name="map">
+			<map>
+<!-- 			复杂类型	<entry key-ref="" value-ref=""></entry> -->
+				<entry key="name" value="itcast"></entry>
+				<entry key="address" value="北京"></entry>
+			</map>
+	</property>
+
+4)  注入Properties
+	* java.utils.Properties 类 继承  java.utils.HashTable
+	Properties key和value都是String类型
+	例如：
+		<property name="properties">
+			<props>
+				<prop key="company">传智播客</prop>
+				<prop key="pnum">100</prop>
+			</props>
+		</property>
+
+6、 在Spring框架中引入多个XML配置文件
+	第一种 并列引入多个XML
+	ApplicationContext applicationContext = new ClassPathXmlApplicationContext("beans1.xml", "beans2.xml");
+
+	第二种 引入总xml文件，在总xml文件引入 子xml文件
+	ApplicationContext applicationContext = new ClassPathXmlApplicationContext("applicationContext.xml");
+	* 在applicationContext.xml 中
+		<import resource="classpath:bean1.xml"/>
+		<import resource="classpath:bean2.xml"/>
+
+在开发中主要使用 第二种 ， 将配置文件分离配置 便于维护管理
+
+================================================================================================================================
+六、Ioc容器装配Bean（注解方式）
+1、 搭建环境
+	导入jar 和 xml方式开发 是相同的
+
+2、 使用注解方式进行Bean注册
+	xml 方式： <bean id="" class="">
+	spring2.5版本 提供一组注解，完成Bean注册
+	* @Component  描述Spring框架中Bean
+
+第一步 编写Class，在声明上 添加 @Component
+	@Component("helloService")
+	// <bean id="helloService" class="...." />
+	public class HelloService {
+	}
+
+第二步 编写applicationContext.xml
+	通知Spring 注解类所在包
+	* 需要引入 context 名称空间
+<context:component-scan base-package="cn.itcast.spring.a_beandefinition"></context:component-scan>
+
+spring2.5 引入@Component 等效三个衍生注解
+	* @Repository 用于对DAO实现类进行标注 （持久层）
+	* @Service 用于对Service实现类进行标注 （业务层）
+	* @Controller 用于对Controller实现类进行标注 (表现层)
+
+3、 属性依赖注入
+	1） 简单属性的注入 通过 @Value注解完成
+	@Service("userService")
+	public class UserService {
+		// 注入name属性
+		@Value("itcast")
+		private String name;
+	}
+
+	2） 复杂属性注入，通过@Autowired注解 完成Bean自动装配
+		@Autowired 默认按照类型进行注入
+
+	@Service("userService")
+	public class UserService {
+		@Autowired
+		// 复杂对象
+		private UserDAO userDAO;
+	}
+
+	@Repository("userDAO")
+	public class UserDAO {
+	}
+
+========================== @Value @Autowired注解都可以修饰 成员变量 或者 setter方法，如果修改成员变量，不需要提供setter方法
+	@Autowired注解 结合 @Qualifer注解 按照名称注入
+		@Service("userService")
+		public class UserService {
+			@Autowired
+			@Qualifier("uDAO")
+			// 复杂对象
+			private UserDAO userDAO;
+		}
+
+		@Repository("uDAO")
+		public class UserDAO {
+
+		}
+	3） 使用@Resource注解 完成复杂对象Bean装配
+		@Resource和@Autowired注解功能相似
+
+	@Autowired
+	@Qualifer("userDAO")
+	private UserDAO userDAO ;
+	等价于
+	@Resource(name="userDAO")
+	private UserDAO userDAO ;
+
+4、Bean其它属性设置
+	1) 指定Bean的初始化方法和销毁方法(注解)  <bean init-method="" destroy-method="" />
+		@PostConstruct  作用 init-method
+		@PreDestroy  作用 destroy-method
+	2) Bean的作用范围  <bean scope="" />
+		@Scope 注解 ，默认作用域 singleton 单例
+
+5、 Spring3.0 提供 注册Bean的注解
+	@Configuration 指定POJO类为Spring提供Bean定义信息
+	@Bean 提供一个Bean定义信息
+
+	@Configuration
+	public class BeanConfig {
+		// 提供两个方法 获得Car和Product对象
+		@Bean(name = "car")
+		public Car initCar() {
+			Car car = new Car();
+			car.setName("大众");
+			car.setPrice(10000);
+			return car;
+		}
+
+		@Bean(name = "product")
+		public Product showProduct() {
+			Product product = new Product();
+			product.setPname("空调");
+			product.setPnum(100);
+			return product;
+		}
+	}
+
+使用配置Bean 被Spring 扫描到 就可以了
+
+6、 xml和注解混合使用
+	很多企业开发者 还是采用 xml作为主流配置
+* Bean 注册 通过XML完成
+* 注入使用 @Autowired 注解完成
+
+<context:annotation-config/> 启用四个注解 使@Resource、@ PostConstruct、@ PreDestroy、@Autowired注解生效
+
+结论 ：
+   1、 xml配置 和 注解配置 效果完全相同
+   2、 如果Bean 来自第三方， 必须使用xml
+   3、 Spring3.0 Bean注册方式， 使用比较少，主要用于Bean 构造逻辑及其复杂
+
+===========================================================================================================================
+七、在web项目中集成Spring
+1、 直接在Servlet 加载Spring 配置文件
+	ApplicationContext applicationContext = new ClassPathXmlApplicationContext("applicationContext.xml");
+	HelloService helloService = (HelloService) applicationContext.getBean("helloService");
+	helloService.sayHello();
+问题： 每次请求都会加载Spring环境，初始化所有Bean ，性能问题 ！！！
+解决方案一 ： 将代码放入Servlet init 中 ， 无法保证所有Servlet都能使用 ApplicationContext
+解决方案二 ： ServletContext ----- tomcat启动时， 加载Spring配置文件，获得对象 ，放入ServletContext
+	* ServletCointextListener
+
+2、导入spring-web.jar
+	保存 ContextLoaderListener 完成在Servlet初始化阶段，加载Spring配置文件，将工厂对象放入 ServletContext
+
+3、配置web.xml
+	<listener>
+		<listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+	</listener>
+* 默认读取 WEB-INF/applicationContext.xml
+	配置 全局参数 contextConfigLocation 指定 配置文件位置
+	<context-param>
+		<param-name>contextConfigLocation</param-name>
+		<param-value>classpath:applicationContext.xml</param-value>
+	</context-param>
+
+4、 修改Servlet代码
+	从ServletContext中获得 Spring工厂
+	第一种：
+	WebApplicationContext applicationContext = (WebApplicationContext) getServletContext().getAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE);
+	第二种：
+	WebApplicationContext applicationContext = WebApplicationContextUtils.getWebApplicationContext(getServletContext());
+
+八、Spring 整合 junit4 测试
+1、 导入spring-test.jar
+2、 编写测试用例
+	@RunWith(SpringJUnit4ClassRunner.class)
+	@ContextConfiguration(locations = "classpath:applicationContext.xml") // 指定配置文件位置
+	public class HelloServiceTest {
+		@Autowired
+		private HelloService helloService; // 注入需要测试对象
+
+		@Test
+		// 测试
+		public void demo2() {
+			helloService.sayHello(); // 调用测试方法
+		}
+	}
+
+=============================================================================================================
+练习 ：
+用户登录
+ 1、 login.jsp 提交struts2
+ 2、 struts2 Action中， 获得WebApplicationContext ， genBean 获得Service
+ 3、 spring 完成Service DAO配置 自动注入
+ 4、 UserDAO 使用Hibernate查询数据库
+ 5、 打印登录是否成功
+
+
+
+环境搭建 导入jar包 、 spring bean装配都是理论无需代码，
+后处理Bean 重点、
+注入看看笔记
+理解p空间 spEL 、 注解Bean自动扫描，自动装配、 web项目集成和junit
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

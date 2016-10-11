@@ -1,0 +1,317 @@
+第四、第五天 制作Struts2 综合练习
+一、 项目本地导入
+MyEclipse 新建 web project ， 覆盖对应 src 和 WebRoot
+Eclipse 新建 Dynamic web project ， 覆盖src ， 将WebRoot 中内容复制 WebContent 目录
+
+JavaEE 企业级应用软件，布局经常采用 Frameset ， 左侧菜单树使用Dztree js组件制作的
+
+目标功能 ：
+1、 登陆
+2、 添加用户 （简历上传）
+3、 组合条件 员工信息列表查询
+4、 员工信息详情查看（简历下载）
+5、 员工信息删除
+6、 员工信息编辑
+
+二、 数据库设计
+#新建数据库
+create database struts2exec;
+
+#创建用户
+create user struts2@localhost identified by 'struts2';
+#授权
+grant all on struts2exec.* to struts2@localhost;
+
+***** Oracle和MySQL 作为应用数据库区别
+mysql存在数据库概念，在企业开发中，针对一个项目创建一个单独数据库，创建单独用户， 为用户授予数据库权限 ，
+oracle 一个数据库就是一个服务，在这个库中可以存在很多用户，每个用户有单独表空间 ，针对一个项目，只需要创建一个用户
+
+#用户表
+CREATE TABLE S_User(
+	userID INT  NOT NULL AUTO_INCREMENT, #主键ID
+	userName VARCHAR(50)   NULL,  #用户姓名
+	logonName VARCHAR(50)   NULL, #登录名
+	logonPwd VARCHAR(50)  NULL,   #密码#
+	sex VARCHAR(10)  NULL,        #性别（例如：男，女）
+	birthday VARCHAR(50) NULL,    #出生日期
+	education VARCHAR(20)  NULL,  #学历（例如：研究生、本科、专科、高中）
+	telephone VARCHAR(50)  NULL,  #电话
+	interest VARCHAR(20)  NULL,   #兴趣爱好（例如：体育、旅游、逛街）
+	path VARCHAR(500)  NULL,      #上传路径（path路径）
+	filename VARCHAR(100)  NULL,  #上传文件名称（文件名）
+	remark VARCHAR(500)  NULL,    #备注
+	PRIMARY KEY (userID)
+);
+
+#初始化数据：默认用户名和密码是admin
+INSERT INTO s_user (userID,userName,logonName,logonPwd) VALUES (1,'超级管理员','admin','admin');
+
+三、 搭建开发环境
+struts2 + javabean + DAO + C3P0 + DBUtils + MySQL
+导入jar包 和 配置文件
+
+创建包结构
+cn.itcast.user.domain
+cn.itcast.user.dao
+cn.itcast.user.service
+cn.itcast.user.web.action
+cn.itcast.user.utils
+
+四、 功能开发  ---- 登陆功能
+内网应用系统通常不需要验证码技术
+1、登陆页面 WebRoot/login/login.jsp
+form元素 改造  <s:form>
+* form的action 提交路径 怎么写 ？
+  企业中为了Action 代码可维护性，通常一个业务模块（Model）使用 一个Action
+  将登陆、 员工增删改查 对应业务方法 写入到 同一个Action
+
+2、登陆表单数据校验
+用户名 非空，3-12位
+密码  非空
+
+3、完成登陆逻辑，session保存用户， 跳转主页
+top.jsp   ${user.userName } 显示当前登陆用户
+
+
+五、 功能开发 ---- 员工添加
+1、 员工添加页面 WebRoot/user/add.jsp
+form元素 改造 <s:form>
+日期输入，使用 jquery datapicker控件
+	*  $('#birthday').datepick({dateFormat: 'yy-mm-dd'});
+<s:form action="user_add">  访问 UserAction 中 add方法
+
+2、 数据校验
+校验出现input跳转问题，登陆页面校验失败跳转 login.jsp , 员工添加校验失败跳转 add.jsp  ---- 只能配置一个input
+	* <interceptor name="workflow" class="com.opensymphony.xwork2.interceptor.DefaultWorkflowInterceptor"/> 完成跳转
+	可以通过 @InputConfig注解，改为校验失败后 跳转视图
+
+3、 上传简历
+如果真实文件名保存，出现覆盖问题 ------------ 唯一文件名 UUID
+  * 在DB保存 uuid文件名路径 和 真实文件名
+
+六、 组合条件查询 -- 查询员工列表
+1、 查询页面 WebRoot/user/list.jsp
+form  改造 <s:form>
+<s:form action="user_list" > 提交请求 UserAction 的 list方法
+
+2、 条件组合查询
+SQL语句 动态拼接
+		String sql = "select * from s_user where 1=1 ";
+		List<String> argList = new ArrayList<String>(); // 参数列表
+		if (user.getUserName() != null
+				&& user.getUserName().trim().length() > 0) {
+			sql += "and userName like ? ";
+			argList.add("%" + user.getUserName() + "%");
+		}
+		if (user.getSex() != null && user.getSex().trim().length() > 0) {
+			sql += "and sex = ? ";
+			argList.add(user.getSex());
+		}
+		if (user.getEducation() != null
+				&& user.getEducation().trim().length() > 0) {
+			sql += "and education = ? ";
+			argList.add(user.getEducation());
+		}
+		if (user.getIsUpload() != null
+				&& user.getIsUpload().trim().length() > 0) {
+			if (user.getIsUpload().equals("1")) {
+				// 上传简历
+				sql += "and filename is not null";
+			} else if (user.getIsUpload().equals("2")) {
+				// 没有上传简历
+				sql += "and filename is null";
+			}
+		}
+
+3、 Action将查询结果 定义成员变量，提供getter方法 （值栈）
+4、 JSP 通过struts2 标签 显示数据
+	* 修改指向条件查询链接
+	修改 left.jsp
+		d.add(3,2,'用户管理','${pageContext.request.contextPath}/user_list.action','','mainFrame');
+	修改 struts.xml
+		<result name="addSUCCESS" type="redirectAction">user_list</result>
+		<result name="listSUCCESS">/user/list.jsp</result>
+
+七、 功能实现 --- 员工删除功能
+list.jsp 点击每行数据后 删除图标，删除该行数据
+删除原理： 根据id 删除
+
+<s:a action="user_delete" namespace="/">
+	<s:param name="userID" value="#user.userID"></s:param>
+	<img src="${pageContext.request.contextPath}/images/i_del.gif" width="16" height="16" border="0" style="CURSOR: hand">
+</s:a>
+
+服务器根据 id 删除数据表记录
+  ** 同时删除员工的简历
+
+JavaScript 确认删除效果
+	$(".delLink").click(function(event){
+		var isConfirm = window.confirm("想好了吗？");
+		if(!isConfirm){
+		// 阻止提交
+		event.preventDefault();
+	}
+});
+
+
+===============================================================================================================================================
+知识点 ： 表单防止重复提交
+表单重复提交 危害： 刷票、 重复注册、带来服务器访问压力（拒绝服务）
+
+防止表单重复提交原理 ！！！！
+
+1、 在jsp 通过 <s:token /> 生成令牌号
+生成表单隐藏域
+将令牌号保存到Session
+
+2、 通过struts2 提供 tokenIntercetor 拦截器 完成请求中令牌号 和 session中令牌号 比较
+<interceptor name="token" class="org.apache.struts2.interceptor.TokenInterceptor"/>
+		<action name="token" class="cn.itcast.struts2.TokenAction">
+			<result>/index.jsp</result>
+			<!-- 重新定义拦截器 -->
+			<interceptor-ref name="defaultStack"></interceptor-ref>
+			<interceptor-ref name="token"></interceptor-ref>
+		</action>
+
+3、 当表单重复提交时，token拦截器自动跳转 result name="invalid.token"
+ 通过 <s:actionError/> 显示错误信息
+
+覆盖重复提交信息  struts.messages.invalid.token=您已经重复提交表单，请刷新后重试
+
+
+========================================================================================================================
+
+知识点 ：struts2 的 Ajax 开发
+	Ajax开发客户端 和 服务器交互 数据格式  --------------- json
+		* json 是最轻量级，体积最小
+
+	服务器将程序处理结果，转换为json格式发送给 客户端
+		* 服务器怎么把结果转换成json格式呢？
+			1） json-lib 、 flexjson  工具类库
+			2） 今天要学习的是Struts2 内置json插件
+				* struts2-json-plugin-2.3.7.jar
+
+案例一： 输入用户名，鼠标点击密码（触发用户名元素离焦事件），使用Ajax 将用户名发送到服务器 判断是否存在
+	jquery 1.4 、 1.6 新特性比较多  （企业主流 1.4 ）
+	重点：怎么把数据以json的方式传回给客户端呢？
+		使用struts2 json插件
+			要点1 ： <package> extends 继承 json-default
+			要点2 ： <result> type 类型写 json
+
+			struts2 json插件 ，默认将值栈root【顶端】对象 所有属性返回（get方法），
+			如果没有实现ModelDriven，Action就是【顶端】对象（Action中有get方法的属性返回），
+			不想将company属性返回 ，在get方法上 @JSON(serialize=false)
+
+jsp:
+
+struts.xml
+	<package name="myjson" extends="json-default">
+		<action name="checkUserName" class="..">
+			<result type="json" name="success"></result> //注意name="success"必须写
+		</action>
+	</package>
+action
+	private String username;
+	public void setUsername(String username){this.username=username;}
+	public String exit;
+	public String getExit(){return exit;}
+	public String execute(){
+		if(username.equal("admin"){
+			exit="存在";
+		}else{
+			exit="不存在";
+		}
+	}
+
+案例二 ：服务器将 商品对象 List列表返回
+	如果Action 实现ModelDriven ， model对象就是“值栈”“栈顶”对象，struts2 json插件默认 将model返回
+
+	通过设置root属性，修改插件返回 根对象
+		* <param name="root">action</param>  //将Action作为根对象返回
+
+	但是model对象也会被返回的，怎么让它不返回呢？
+		* 在getModel()的方法上加上@JSON(serialize=false)
+
+	只想要每个商品的 name 属性
+		方案一： 在pnum 、price 的get方法上 添加 @JSON(serialize=false)
+			*  只要@JSON注解，属性将永远不能参与 json返回
+		方案二： 设置 includeProperties 属性
+			*  <param name="includeProperties">
+				products\[\d+\]\.name
+				....
+			   </param>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

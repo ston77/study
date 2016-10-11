@@ -1,0 +1,553 @@
+
+一、Hibernate 检索
+1. hibernate 提供5种检索数据的方式
+导航对象图检索方式:  根据已经加载的对象导航到其他对象
+    Customer c = (Customer)session.get(Customer.class, 1); // 持久态对象
+	c.getOrders().size(); // c 对象关联 order 集合 ，hibernate 会自动检索 order数据
+
+OID 检索方式:  按照对象的 OID 来检索对象
+	session.get / session.load
+
+HQL 检索方式: 使用面向对象的 HQL 查询语言
+	session.createQuery(hql)
+
+QBC 检索方式: 使用 QBC(Query By Criteria) API 来检索对象. 这种 API 封装了基于字符串形式的查询语句, 提供了更加面向对象的查询接口.
+	session.createCriteria(Xxx.class);
+
+本地 SQL 检索方式: 使用本地数据库的 SQL 查询语句
+	session.createSQLQuery(sql)
+
+2、 HQL 是 Hibernate 最常用检索方式
+支持 所有 SQL支持检索方式
+
+步骤 ：
+   1） 获得Session
+   2） 编写HQL
+   3） 通过 session.createQuery(hql) 创建Query对象
+   4） 为Query对象 设置条件参数
+   5） 执行查询 list() ---- 返回一个集合列表 、 uniqueResult();--- 返回一个查询结果
+
+* Qurey 接口支持方法链编程风格  ， 将上面所有步骤写入一句程序代码中
+
+3、 编写测试用例，创建初始数据
+创建4个Customer ， 每个Customer 创建 10个 Order
+
+4、 简单查询， hibernate 企业开发主流查询 HQL 和 QBC
+ * 查询所有数据
+		// HQL
+		String hql = "from Customer";
+		Query query = session.createQuery(hql);
+		List<Customer> list = query.list();
+		System.out.println(list);
+
+		// QBC
+		Criteria criteria = session.createCriteria(Customer.class);
+		List<Customer> list2 = criteria.list();
+		System.out.println(list2);
+  * HQL 和 QBC 都支持链式编程写法
+		List<Customer> list3 = session.createQuery("from Customer").list();
+
+5、 本地SQL 检索
+	* 编写及其复杂的查询，企业内部大多使用 SQL 语句
+		// 内连接 写法一 ： select * from A inner join B on A.id = B.A_id;
+		// 内连接 写法二 （隐式）： select * from A,B where A.id = B.A_id ;
+		String sql = "select * from customers , orders where customers.id = orders.customer_id and customers.name = ?";
+		SQLQuery sqlQuery = session.createSQLQuery(sql);
+		// 设置参数
+		sqlQuery.setParameter(0, "mary");
+		List list = sqlQuery.list();
+		System.out.println(list);
+	* 当返回很多列时，默认将每条记录保存在 Object[]中， 返回 List<Object[]>
+	* 将返回结果 与实体类 绑定，将每条数据 转换实体类对象
+		String sql = "select orders.* from customers , orders where customers.id = orders.customer_id and customers.name = ?";
+		sqlQuery.addEntity(Order.class);
+
+6、 编写HQL时，通过as关键字 为类 起别名
+   from Customer as c where c.name=:custname
+   原来写法： from Customer where name=:custname
+   使用别名时 ，as可以省略 from Customer c where c.name=:custname
+
+* 别名主要使用 关联复杂查询时
+
+7、 多态查询
+    hibernate 检索一个类 对应数据时， 将类所有子类（PO类） 对应数据表记录返回
+	session.createQuery("from java.lang.Object").list();
+ * 将Object 所有子类 对应数据表的 数据查询返回
+
+from 关键字后面，如果PO类，省略包名， 如果不是PO类，必须写完整包名类名
+
+8、 查询结果排序
+	// HQL
+	String hql = "from Customer order by name asc";
+	List list = session.createQuery(hql).list();
+	System.out.println(list);
+	// QBC
+	List list2 = session.createCriteria(Customer.class).addOrder(org.hibernate.criterion.Order.asc("name")).list();
+	System.out.println(list2);
+
+9、 分页查询
+Query 接口 和 Criteria 接口 都提供 setFirstResult 、setMaxResults 两个方法，用于分页查询
+	*  setFirstResult 起始记录索引，第一条数据 索引 0
+	*  setMaxResults  查询返回记录条数
+	案例：
+		// 分页查询，返回 25-34条订单
+		// HQL
+		String hql = "from Order";
+		Query query = session.createQuery(hql);
+		// 设置分页参数
+		query.setFirstResult(24); // 索引 是 起始记录 -1
+		query.setMaxResults(10);
+
+10、 检索单一对象  query.uniqueResult() 、 criteria.uniqueResult()
+   * 该方法主要用于，只有1条数据结果
+   * 什么情况只有一条结果 ： 用户登录、使用聚集函数 sum、count、avg、max、min
+		// 查询mary的信息
+		Customer customer = (Customer) session.createQuery("from Customer where name = 'mary'").uniqueResult();
+		System.out.println(customer);
+
+		// 使用聚集函数 -- 查询客户最大年龄
+		Integer age = (Integer) session.createQuery("select max(age) from Customer").uniqueResult();
+		System.out.println(age);
+
+如果查询结果 只有一条记录 或者 无记录，使用uniqueResult 是没问题的， 但是如果查询结果大于 一条记录，报错
+org.hibernate.NonUniqueResultException: query did not return a unique result: 4
+
+===============================================================================================================================
+11、 带有参数条件的查询
+1） 单表条件查询
+HQL写法：
+Customer customer1 = (Customer) session.createQuery("from Customer where name = ?").setParameter(0, "tom").uniqueResult();
+Customer customer2 = (Customer) session.createQuery("from Customer where name = :cname").setParameter("cname", "tom").uniqueResult();
+
+QBC写法：
+Customer customer3 = (Customer) session.createCriteria(Customer.class).add(Restrictions.eq("name", "tom")).uniqueResult();
+	* Restrictions 用来添加查询条件 ，面向对象条件查询
+
+将参数绑定到一个持久化对象
+	Customer customer = new Customer();
+	customer.setId(1);
+	List list2 = session.createQuery("from Order where customer = ?").setEntity(0, customer).list(); // 通过customer_id 查询
+
+* 简化为 List list = session.createQuery("from Order where customer.id = ?").setParameter(0, 1).list();
+* setEntity 关联对象 ，必须要有OID ，否则会报错
+
+使用QBC 为参数绑定 持久化对象
+	List list3 = session.createCriteria(Order.class).add(Restrictions.eq("customer", customer)).list(); // 通过customer_id 查询
+
+2） 多表条件查询
+hibernate  HQL 支持7种 连接写法
+	* （SQL标准）内连接 inner join  可以省略 inner，直接 join
+	* 迫切内连接 inner join fetch  ------ 不是SQL写法，是hibernate 提供
+	* 隐式内连接 不写任何关键字，完成表关联
+
+	* （SQL标准）左外连接 left outer join ，可以省略 outer ，直接 left join
+	* 迫切左外连接 left outer join fetch ----- 不是SQL语法
+	* （SQL标准）右外连接 right outer join
+
+	* （SQL标准）交叉连接 （笛卡尔积 ） ---------- 不讲
+
+问题： 区分内连接和迫切内连接， 左外连接和迫切左外连接
+	* 左外连接 List list = session.createQuery( "from Customer c left outer join c.orders").list(); 返回 List<Object[]>
+	每个数组两个元素 ，一个Customer 一个Order
+	* 迫切左外连接  List list = session.createQuery("select distinct c from Customer c left outer join fetch c.orders").list();
+	返回 List<Customer> 保存所有Customer对象，需要distinct 排重重复
+
+问题：多表关联条件查询，隐式内连接 和 QBC方式
+	// 隐式内连接 o.customer 当做Customer类数据表
+	List<Order> list = session.createQuery("from Order o where o.customer.name = ?").setParameter(0, "mary").list();
+
+	// QBC 连接查询，必须使用 criteria.createAlias()
+	Criteria criteria = session.createCriteria(Order.class);
+	criteria.createAlias("customer", "c"); // 为订单关联Customer属性起了别名
+	criteria.add(Restrictions.eq("c.name", "mary"));
+	List list2 = criteria.list();
+	*  在 createAlias 默认使用 inner join 内连接
+		criteria.createAlias("customer", "c", Criteria.LEFT_JOIN); 在关联时使用左外连接
+
+12 、投影查询
+	查询结果仅包含实体的部分属性
+	*  查询Customer的所有 name,age 属性
+HQL方式
+	session.createQuery("select name,age from Customer"); 返回 List<Object[]>
+	* 将结果保存Customer对象中，提供name和age 构造方法
+	session.createQuery("select new Customer(name,age) from Customer"); 返回 List<Customer>
+可以将查询结果 保存List 或者 Map集合
+	* select new list(name,age) from Customer
+	* select new map(name,age) from Customer
+
+QBC方式 （开发中不用，非常麻烦）
+	List list3 = session
+				.createCriteria(Customer.class)
+				.setProjection(
+						Projections.projectionList()
+								.add(Property.forName("name"))
+								.add(Property.forName("age"))).list();
+
+13、 分组统计查询
+	count sum avg max min
+	* Long count = (Long) session.createQuery("select count(*) from Order").uniqueResult();
+	* List list2 = session.createQuery("select count(*) from Order group by customer").list();
+
+14、 命名查询语句
+   在开发中 hql语句 写到代码中，不方便维护， 将HQL定义到配置文件中 ------------ 命名查询语句
+
+在hbm映射文件 （也可以用注解配置）
+	<!-- 这里可以定义命名查询 -->
+	<!-- 	定义 HQL 语句 <query name=""></query> -->
+	<!-- 	定义 SQL 语句 <sql-query name=""></sql-query> -->
+	<query name="findCustomerByName">
+		<![CDATA[from Customer where name = ?]]>
+	</query>
+* 为hql语句 起了一个名字
+
+程序代码
+	Query query = session.getNamedQuery("findCustomerByName");
+	query.setParameter(0, "tom");
+	Customer customer = (Customer) query.uniqueResult();
+
+15、 离线Criteria对象 --- DetachedCriteria
+	* 主要用于javaee分层开发，可以在web层封装查询条件，传递数据层 关联Session进行查询
+	DetachedCriteria detachedCriteria = DetachedCriteria.forClass(Customer.class);
+	detachedCriteria.add(Restrictions.eq("name", "kitty"));
+
+	// 传递数据层
+	Session session = HibernateUtils.openSession();
+	Transaction transaction = session.beginTransaction();
+
+	// 将离线查询对象 关联到Session
+	Criteria criteria = detachedCriteria.getExecutableCriteria(session);
+	Customer customer = (Customer) criteria.uniqueResult();
+
+HQL和QBC比较： 两种查询功能类似， 简单查询建议编写HQL，对于复杂查询，多条件组合查询 建议编写 QBC方式
+
+============================================================================================================================
+二、 hibernate 在进行数据检索时，抓取策略 （Hibernate 优化环节）
+1、 准备初始数据
+	4条Customer数据， 39条Order 数据
+
+2、 区分立即检索和延迟检索
+   * 理解 为什么要使用 延迟检索
+get方法，采用策略 立即检索
+load方法，采用策略 延迟检索
+
+延迟加载在开发中，主要好处，延缓数据加载，在使用时才进行加载 （缩短数据在内存中时间）
+
+3、 load方法 返回代理对象 （目标类 子类对象 ）
+   * hibernate 返回代理对象 由 javassist-3.12.0.GA.jar 提供工具类 负责创建
+	Javassist是一个开源的分析、编辑和创建Java字节码的类库。
+
+4、 延迟代理对象的数据初始化
+    方式一： 访问代理对象 内部 除了 id属性外 其它属性  （导致延迟对象自动初始化 ）
+    方式二： 调用 Hibernate.initialize(代理对象);
+
+===========================================================
+5、 区分类级别检索和关联级别的检索
+   类级别检索，通过session直接检索 某一个类 对应数据表数据
+	   session.load(Customer.class , 1) ; 类级别
+	   session.createQuery("from Order"); 类级别
+   关联级别检索，程序内部已经获得持久对象，通过对象引用关系，进行数据检索
+		Customer c = session.load(Customer.class , 1) ; 类级别
+		c.getOrders().size() ;  关联级别检索
+		order.getCustomer().getName() ; 关联级别检索
+
+6、 类级别检索策略（抓取策略）
+	* 类级别可选的检索策略包括立即检索和延迟检索, 默认为延迟检索  （针对load方法 ）
+    * 类级别的检索策略可以通过 <class> 元素的 lazy 属性进行设置
+
+类级别检索 get 、Query 默认使用立即检索策略
+		   load 默认使用延迟检索， 在hbm文件 <class> 配置 lazy=false 使类级别检索变为立即检索
+* lazy=false 后 load方法效果 和 get方法相同，使用 立即检索
+
+7、 关联级别的检索策略
+    c.getOrders().size() ;  order.getCustomer().getName();  属于关联级别的检索
+
+	1） 多对多 和 一对多 情况下 <set> 元素中配置 抓取策略  ---- 关联集合
+	   <set> 元素提供 fetch 和 lazy 两个属性 决定检索策略
+	   * fetch 属性 （select、subselect、join） ，主要决定SQL语句生成格式
+	   * lazy 属性 （false、true、extra）主要决定集合被初始化的时机
+	fetch 和 lazy 共有9种组合
+		fetch 属性为 join， lazy属性会被忽略， 生成SQL将采用迫切左外连接查询 (left outer join fetch )
+			* SQL语句 左外连接，采用 立即检索
+		fetch 属性为 select ，将生成多条简单SQL查询
+			lazy = false 立即检索
+			lazy = true  延迟检索
+			lazy = extra 加强延迟检索 （及其懒惰，比延迟更加延迟）
+		fetch 属性为 subselect ，将生成子查询的SQL语句
+			lazy = false 立即检索
+			lazy = true  延迟检索
+			lazy = extra 加强延迟检索 （及其懒惰，比延迟更加延迟）
+
+**** lazy=false 立即检索，检索类级别数据时，关联级别数据也进行检索
+	 lazy=true 延迟检索，检索类级别数据时，不会检索关联级别的数据，用到了再进行检索
+	 lazy="extra" 及其懒惰，当程序第一次访问 order 属性的 size(), contains() 和 isEmpty() 方法时, Hibernate 不会初始化 orders 集合类的实例 ，例如 查询size时，生成select count(*)
+
+**** 因为fetch=join , session.get... 生成迫切左外连接查询
+	 使用Query对象查询数据时，需要自己编写hql语句， fetch=join 无效果，关联集合将根据lazy 设置进行 加载
+
+结论 ： session.load/ session.get ， fetch=join 生成迫切左外连接， lazy被忽略
+        session.createQuery(hql).list()  将忽略 fetch=join， lazy 将重新产生效果
+
+	2） 多对一 和 一对一 情况下 <many-to-one> 或者 <one-to-one> 配置抓取策略  ---- 关联单一对象
+	<many-to-one> 元素也有一个 lazy 属性和 fetch 属性
+		fetch 决定SQL语句格式， lazy决定数据加载时间
+		fetch取值 join、 select
+		lazy取值 false、 proxy、no-proxy(不讲解)
+	fetch 和 lazy 共有4种组合
+		fetch 属性为 join， lazy属性会被忽略， 生成SQL将采用迫切左外连接查询 (left outer join fetch )
+		fetch 属性为 select， 产生多条SQL
+			lazy=false  立即检索
+			lazy=proxy  有关联对象类级别检索策略决定立即检索 或者 延迟检索
+			* 由Customer.hbm.xml  <class name="cn.itcast.domain.Customer" lazy="??"> lazy决定立即检索 还是 延迟检索
+**** Query的list 会忽略 fetch="join", lazy重新起作用
+
+结论： 开发中能延迟都延迟，必须立即的 才立即的
+
+=======================================================================================================================
+8、 批量检索的使用
+	批量检索 可以解决 N+1 查询问题
+	1） Customer 一方设置批量检索
+		<set> 元素有一个 batch-size 属性 ，设置批量检索数量
+		N+1问题：查询每个客户订单数，一次查询所有客户， 每个客户订单数产生单独SQL查询，如果有n个客户，产生n条SQL
+	解决： Customer.hbm.xml 设置<set>元素 batch-size 一次查询多个用户订单数
+		* <set name="orders" batch-size="3">
+	2)  Order多方 设置批量检索
+		查询订单和客户，产生多余SQL
+		配置批量检索，一次多查询几个客户数据
+	解决： Customer.hbm.xml 在 <class name="cn.itcast.domain.Customer" batch-size="3">
+
+
+三、 Hibernate 注解应用 （常用注解）
+	* hibernate 注解 简化hbm 文件的配置
+	* 单表注解配置、 一对多、多对多注解配置
+
+hibernate3.6 注解开发和xml开发 导入jar包 和 配置文件 是一样的
+
+1、 使用注解配置 PO对象
+@Entity 实体类
+@Table 生成目标表
+@Id 主键
+@GeneratedValue 主键生成策略
+@Column 定义生成列
+
+注解开发优先使用 javax.persistence.*
+
+// Book 是一个实体类
+@Entity
+// 配置@Table 注解 ，设置生成表名
+@Table(name = "book")
+public class Book {
+	// 主键 @Id
+	@Id
+	// 生成策略 @GeneratedValue
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Integer id;
+
+	// 普通属性@Column 注解修饰
+	// 如果不写@Column 列名就是 属性名
+	@Column(name = "bookname", length = 20, unique = true, nullable = false)
+	private String name;
+	private Double price;
+
+}
+*  @Id、@GeneratedValue(strategy = GenerationType.IDENTITY)、@Column(name = "bookname", length = 20, unique = true, nullable = false)
+  可以修改属性，也可以放到属性get方法上
+
+在hibernate.cfg.xml 配置注解类
+	<mapping class="cn.itcast.domain.Book"/>
+
+2、 主键生成策略
+	@GeneratedValue(strategy = GenerationType.IDENTITY) --- 只支持四种策略
+编写UUID 主键生成策略 Person
+	@Entity
+	@Table(name = "person")
+	public class Person {
+		@Id
+		@GenericGenerator(name = "myuuidgenerator", strategy = "uuid")
+		@GeneratedValue(generator = "myuuidgenerator")
+		private String id; // UUID
+		private String name;
+	}
+
+3、 其它属性
+	@Temporal 生成日期类型
+	@Transient 控制不生成
+
+日期类型java.util.Date 对于MySQL 生成 datetime类，日期和时间都包括
+	* @Temporal(TemporalType.DATE) 数据表只保存日期
+	* @Temporal(TemporalType.TIME) 数据表只保存时间
+	* @Temporal(TemporalType.TIMESTAMP) 日期时间都保存
+
+Hibernate 实体类中，所有get方法 属性， 都会在数据表 自动生成列
+	* 有时属性不想 生成列  @Transient 注解
+
+=====================================================================================
+4、 一对多
+@OneToMany @ManyToOne
+
+@Entity
+@Table(name = "customers")
+public class Customer {
+	@Id
+	@GeneratedValue(strategy = GenerationType.AUTO)
+	private Integer id;
+	private String name;
+
+	// targetEntity 类似 <one-to-many class="">
+	// mappedBy 作用 inverse=true
+	@OneToMany(targetEntity = Order.class, mappedBy = "customer")
+	@Cascade(value = { CascadeType.SAVE_UPDATE })
+	private Set<Order> orders = new HashSet<Order>();
+}
+
+@Entity
+@Table(name = "orders")
+public class Order {
+	@Id
+	@GeneratedValue(strategy = GenerationType.AUTO)
+	private Integer id;
+	private String address;
+
+	@ManyToOne(targetEntity = Customer.class)
+	@JoinColumn(name = "customer_id")
+	// 添加外键列
+	private Customer customer;
+}
+
+jar冲突错误 java.lang.NoSuchMethodError: javax.persistence.OneToMany.orphanRemoval()Z
+	* javaee.jar(myeclipse提供) 和 jpa的jar 冲突
+	* 解决 ： 删除javaee.jar 中 javax.persistence 包
+
+* 级联操作 	@Cascade(value = { CascadeType.级别 })
+	DELETE_ORPHAN 已经过时 ，推荐使用 @OneToMany(orphanRemoval=true)
+	所有级联级别
+		@OneToMany(targetEntity = Order.class, mappedBy = "customer", orphanRemoval = true)
+		@Cascade(value = { CascadeType.ALL })
+		private Set<Order> orders = new HashSet<Order>();
+
+5、 多对多
+	@ManyToMany
+* 注解配置多对多时，只需要一端配置中间表，另一端 mappedBy 放弃外键维护权
+
+@Entity
+@Table(name = "students")
+public class Student {
+	@Id
+	@GeneratedValue(strategy = GenerationType.AUTO)
+	private Integer id;
+	private String sname;
+
+	@ManyToMany(targetEntity = Course.class)
+	// 配置中间表
+	// joinColumns 当前类在中间表 外键列名
+	// inverseJoinColumns 对方类 在中间表 外键列名
+	@JoinTable(name = "student_course", joinColumns = { @JoinColumn(name = "student_id") }, inverseJoinColumns = { @JoinColumn(name = "course_id") })
+	private Set<Course> courses = new HashSet<Course>();
+}
+
+@Entity
+@Table(name = "courses")
+public class Course {
+	@Id
+	@GeneratedValue(strategy = GenerationType.AUTO)
+	private Integer id;
+	private String cname;
+
+	@ManyToMany(targetEntity = Student.class, mappedBy = "courses")
+	// 放弃外键维护权
+	private Set<Student> students = new HashSet<Student>();
+}
+
+6、 抓取策略 （了解）
+public class Customer {
+	// 抓取策略
+	@Fetch(FetchMode.SELECT)
+	@LazyCollection(LazyCollectionOption.TRUE)
+	private Set<Order> orders = new HashSet<Order>();
+}
+
+public class Order {
+	// 抓取策略
+	@Fetch(FetchMode.SELECT)
+	@LazyToOne(LazyToOneOption.FALSE)
+	private Customer customer;
+}
+
+关联级别抓取，配置@Fetch等价fetch属性， 关联集合 @LazyCollection ， 关联单一对象 @LazyToOne
+
+7、 NamedQuery 命名查询
+	@NamedQueries(value = { @NamedQuery(name = "findCustomerByName", query = "from Customer where name= ?") })
+	public class Customer {
+		...
+	}
+
+程序代码：
+	Query query = session.getNamedQuery("findCustomerByName");
+	query.setParameter(0, "张三");
+	Customer customer = (Customer) query.uniqueResult();
+
+=======================================================================================================================
+小结：
+   1、 hibernate 简单查询
+   2、 hibernate 条件查询 （多表关联条件 ） ******* 重点
+   3、 命名查询语句和离线条件对象 *******  重点
+   4、 抓取策略 类级别 关联级别 （了解 ）
+   5、 批量检索 掌握
+   6、 注解 单表、多表 、 @NamedQuery  ******** 重点
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

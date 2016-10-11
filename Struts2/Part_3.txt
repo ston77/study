@@ -1,0 +1,467 @@
+第一天 ： struts2环境搭建、Action的编写访问、Result Type 结果集类型
+第二天 ： 请求数据处理 （数据封装、类型转换、数据校验、 错误信息国际化显示、拦截器）
+第三天 ： 响应数据处理 （struts2 上传下载、值栈和OGNL表达式 、struts2常用标签）
+
+一、 Struts2 框架 上传
+1） 企业常用文件上传技术 ： jspSmartUpload（主要应用 JSP model1 时代） 、 fileupload （Apache commons项目中一个组件）、 Servlet3.0 集成文件上传 Part类
+2） 文件上传  enctype="multipart/form-data"  是 MIME协议定义多部分请求体 （消息体）
+
+3） 上传页面编写
+存在 <input type="file" name="upload"/> 上传项，必须提供name属性
+表单提交方式 必须 post 提交
+表单编码类型 enctype="multipart/form-data"  
+
+4） Struts2 对文件上传的支持
+提供 FileUpload 拦截器，用于解析 multipart/form-data 编码格式请求，解析上传文件的内容 
+fileUpload拦截器 默认在 defaultStack 栈中， 默认会执行的 
+
+在Action需要对上传文件内容进行接收
+	页面：
+		<input type="file" name="upload" />
+	Action　：
+		public class UploadAction extends ActionSupport {
+			// 接收上传内容
+			// <input type="file" name="upload" />
+			private File upload; // 这里变量名 和 页面表单元素 name 属性一致
+			private String uploadContentType;
+			private String uploadFileName;
+		} 
+		* 格式 ： 上传表单项name属性 + ContentType 、 上传表单项name属性 + FileName
+		* 为三个对象 提供 setter 方法
+
+通过FileUtils 提供 copyFile 进行文件复制，将上传文件 保存到服务器端 
+
+5) Struts2 上传文件过程中错误处理 
+配置 input 视图 ，作为上传出错后 跳转页面 
+在文件上传时，如果发生错误 ，fileUpload拦截器 会设置错误信息，workflow拦截器 跳转到 input 视图
+
+struts.multipart.parser=jakarta 定义文件上传，采用 commons-fileupload 技术 
+ * 同时支持 cos 、pell 上传技术 （如果使用其它上传技术，单独下载jar包 ）
+
+通过 struts.multipart.maxSize 常量设置文件上传总大小限制 
+ * struts.multipart.maxSize=2097152 默认上传文件总大小 2MB 
+ * 超过文件总大小，跳转input 视图， 通过 <s:actionError /> 回显错误信息 
+在struts.xml 设置上传总大小
+	* <constant name="struts.multipart.maxSize" value="20000000"></constant>
+
+设置上传文件总大小，对所有上传form有效，只想对当前form进行设置，可以设置fileUpload拦截器属性 
+FileUpload 拦截器有 3 个属性可以设置.
+	* fileload.maximumSize: 上传文件的最大长度(以字节为单位), 默认值为 2 MB
+	* fileload.allowedTypes: 允许上传文件的类型, 各类型之间以逗号分隔
+	* fileload.allowedExtensions: 允许上传文件扩展名, 各扩展名之间以逗号分隔
+如果针对fileUpload 进行参数设置，当出错时，在页面通过 <s:fieldError /> 回显错误信息 
+
+struts-messages.properties 文件里预定义 上传错误信息，通过覆盖对应key 显示中文信息
+	struts.messages.error.uploading=Error uploading: {0}
+	struts.messages.error.file.too.large=The file is to large to be uploaded: {0} "{1}" "{2}" {3}
+	struts.messages.error.content.type.not.allowed=Content-Type not allowed: {0} "{1}" "{2}" {3}
+	struts.messages.error.file.extension.not.allowed=File extension not allowed: {0} "{1}" "{2}" {3}
+
+修改为
+	struts.messages.error.uploading=上传错误: {0}
+	struts.messages.error.file.too.large=上传文件太大: {0} "{1}" "{2}" {3}
+	struts.messages.error.content.type.not.allowed=上传文件的类型不允许: {0} "{1}" "{2}" {3}
+	struts.messages.error.file.extension.not.allowed=上传文件的后缀名不允许: {0} "{1}" "{2}" {3}
+
+6） 多文件上传
+===================================================================================================================
+
+二、 struts2 文件下载 
+1） struts2 完成文件下载，通过 结果集类型 （Result Type） stream 来完成的 
+	 struts-default.xml 定义 <result-type name="stream" class="org.apache.struts2.dispatcher.StreamResult"/>
+2） 使用Stream结果集 完成文件下载 
+	文件下载原理： 服务器读取下载文件内容，通过Response响应流写回， 设置 ContentType、 ContentDisposition 头信息
+
+public class StreamResult extends StrutsResultSupport {
+	protected String contentType = "text/plain"; // contentType头信息  （下载文件对应 MIME协议规定类型 ）
+		* html --- text/html . txt--- text/plain 
+	protected String contentDisposition = "inline"; // ContentDisposition头信息 (下载文件打开方式 inline浏览器内部打开, attachment 以附件形式打开)
+	
+	protected String inputName = "inputStream";  // 需要Action中 提供 getInputStream 方法 返回 InputStream 提供下载文件 内容 
+}	
+ 
+Action 提供 InputStream  返回值 getInputStream 方法 ------- 指定下载文件流
+配置 stream 结果集 参数 <param name="contentType">${contentType}</param> ---- 在Action 中提供 getContentType
+	*  ServletActionContext.getServletContext().getMimeType(filename);
+配置 stream 结果集 参数 <param name="contentDisposition">attachment;filename=${filename}</param> ---- 在Action 提供 getFilename 
+	* 下载附件名乱码问题 ， IE和火狐 解决不同 
+	public String encodeDownloadFilename(String filename, String agent)
+			throws IOException {
+		if (agent.contains("Firefox")) { // 火狐浏览器
+			filename = "=?UTF-8?B?"
+					+ new BASE64Encoder().encode(filename.getBytes("utf-8"))
+					+ "?=";
+		} else { // IE及其他浏览器
+			filename = URLEncoder.encode(filename, "utf-8");
+		}
+		return filename;
+	}
+	
+===================================================================================================================
+三、 OGNL表示式使用 和 值栈 
+OGNL是Object Graphic Navigation Language（对象图导航语言）的缩写，它是一个开源项目。 Struts2框架使用OGNL作为默认的表达式语言。
+	* xwork 提供 OGNL表达式 
+	* ognl-3.0.5.jar
+OGNL 是一种比EL 强大很多倍的语言 
+
+OGNL 提供五大类功能 
+   1、支持对象方法调用，如xxx.doSomeSpecial()； 
+   2、支持类静态的方法调用和值访问
+   3、访问OGNL上下文（OGNL context）和ActionContext； （重点 操作ValueStack值栈 ）
+   4、支持赋值操作和表达式串联
+   5、操作集合对象。
+
+1、 使用OGNL访问 对象方法 和 静态方法 
+	* OGNL 在jsp 结合 struts2 标签库 使用 ， <s:property value="ognl表达式" /> 执行 ognl表达式 
+调用 实例方法 ： 对象.方法()  ----  <s:property value="'hello,world'.length()"/>
+调用 静态方法 ： @[类全名（包括包路径）]@[方法名]  --- <s:property value="@java.lang.String@format('您好,%s','小明')"/>
+	* 使用 静态方法调用 必须 设置 struts.ognl.allowStaticMethodAccess=true
+
+2、 访问OGNL上下文（OGNL context）和ActionContext
+OGNL上下文（OGNL context） 对象 ----- 值栈 ValueStack 
+
+问题一 ： 什么是值栈 ValueStack ? 
+	ValueStack 是 struts2 提供一个接口，实现类 OgnlValueStack ---- 值栈对象 （OGNL是从值栈中获取数据的 ）
+	每个Action实例都有一个ValueStack对象 （一个请求 对应 一个ValueStack对象 ）
+	在其中保存当前Action 对象和其他相关对象 （值栈中 是有Action 引用的 ）
+	Struts 框架把 ValueStack 对象保存在名为 “struts.valueStack” 的请求属性中,request中 （值栈对象 是 request一个属性）
+
+问题二 ： 值栈的内部结构 ？
+    值栈由两部分组成 
+		ObjectStack: Struts  把动作和相关对象压入 ObjectStack 中--List
+		ContextMap: Struts 把各种各样的映射关系(一些 Map 类型的对象) 压入 ContextMap 中
+	Struts 会把下面这些映射压入 ContextMap 中
+		parameters: 该 Map 中包含当前请求的请求参数
+		request: 该 Map 中包含当前 request 对象中的所有属性
+		session: 该 Map 中包含当前 session 对象中的所有属性
+		application:该 Map 中包含当前 application  对象中的所有属性
+		attr: 该 Map 按如下顺序来检索某个属性: request, session, application
+
+ValueStack中 存在root属性 (CompoundRoot) 、 context 属性 （OgnlContext ）
+	* CompoundRoot 就是ArrayList
+	* OgnlContext 就是 Map
+context 对应Map 引入 root对象 
+	* context中还存在 request、 session、application、 attr、 parameters 对象引用 
+	* OGNL表达式，访问root中数据时 不需要 #, 访问 request、 session、application、 attr、 parameters 对象数据 必须写 # 
+	* 操作值栈 默认指 操作 root 元素 
+
+问题三 ： 值栈对象的创建 ，ValueStack 和 ActionContext 是什么关系 ？
+	值栈对象 是请求时 创建的 
+	doFilter中 prepare.createActionContext(request, response); 
+		* 创建ActionContext 对象过程中，创建 值栈对象ValueStack 
+		* ActionContext对象 对 ValueStack对象 有引用的 （在程序中 通过 ActionContext 获得 值栈对象 ） 
+	Dispatcher类 serviceAction 方法中 将值栈对象保存到 request范围
+		request.setAttribute(ServletActionContext.STRUTS_VALUESTACK_KEY, proxy.getInvocation().getStack());
+
+问题四 ： 如何获得值栈对象		
+获得值栈对象 有两种方法
+	ValueStack valueStack = (ValueStack) ServletActionContext.getRequest().getAttribute(ServletActionContext.STRUTS_VALUESTACK_KEY);
+	ValueStack valueStack2 = ActionContext.getContext().getValueStack();
+	
+问题五： 向值栈保存数据 （主要针对 root）
+	两种方式 
+		// 将数据保存root的索引0位置，放置到第一个元素 ArrayList add(0,element);
+		valueStack.push("itcast");
+
+		// 在值栈创建参数map， 将数据保存到map中
+		valueStack.set("company", "传智播客");
+		valueStack.set("pany","itcast");
+		
+	在jsp中 通过 <s:debug /> 查看值栈的内容 
+
+问题六： 在JSP中获取值栈的数据 
+    访问root中数据 不需要#
+    访问 其它对象数据 加 #
+	
+通过下标获取root中对象
+   <s:property value="[0].top"/> //取值栈顶对象
+直接在root中查找对象属性 （自上而下自动查找）
+  valueStack:<s:property value="username"/>
+
+在OgnlContext中获取数据
+request:<s:property value="#request.username"/>
+session:<s:property value="#session.username"/>
+application:<s:property value="#application.username"/>
+attr:<s:property value="#attr.username"/>
+parameters:<s:property value="#parameters.cid[0]"/>
+
+================================== valueStack对象 保存在request范围， 值栈生命周期 就是 request的生命周期 ，值栈的内部结构（root、ognlContext）	、获取值栈对象、向值栈保存数据、在JSP显示值栈的内容 
+
+3、 值栈在开发中应用 
+主流应用 ： 值栈 解决 Action 向 JSP 传递 数据问题 
+
+Action 向JSP 传递数据处理结果 ，结果数据有两种形式 
+1） 消息 String类型数据
+	this.addFieldError("msg", "字段错误信息");
+	this.addActionError("Action全局错误信息");
+	this.addActionMessage("Action的消息信息");
+
+* fieldError 针对某一个字段错误信息 （常用于表单校验）、actionError (普通错误信息，不针对某一个字段 登陆失败)、 actionMessage 通用消息 	
+
+在jsp中使用 struts2提供标签 显示消息信息
+	<s:fielderror fieldName="msg"/>
+	<s:actionerror/>
+	<s:actionmessage/>
+	
+2） 数据 （复杂类型数据）
+	使用值栈  valueStack.push(products);
+
+哪些数据默认会放入到值栈 ？？？ 
+	1）每次请求，访问Action对象 会被压入值栈 ------- DefaultActionInvocation 的 init方法 stack.push(action);
+	* Action如果想传递数据给 JSP，只要将数据保存到成员变量，并且提供get方法就可以了 
+	2）ModelDriven 接口 有一个单独拦截器 
+	<interceptor name="modelDriven" class="com.opensymphony.xwork2.interceptor.ModelDrivenInterceptor"/>
+	在拦截器中 ，将model对象 压入了 值栈 stack.push(model);
+	* 如果Action 实现ModelDriven接口，值栈默认栈顶对象 就是model对象 
+
+4、 值栈的数据 通过EL访问 
+问题七：为什么 EL也能访问值栈中的数据 
+
+StrutsPreparedAndExecuteFilter的doFilter代码中 request = prepare.wrapRequest(request); 	
+	* 对Request对象进行了包装 ，StrutsRequestWrapper 
+	* 重写request的 getAttribute 
+		Object attribute = super.getAttribute(s);
+		if (attribute == null) {
+		   attribute = stack.findValue(s);
+		}
+      访问request范围的数据时，如果数据找不到，去值栈中找 
+	* request对象 具备访问值栈数据的能力 （查找root的数据）
+
+============================================================================================================================
+5、 OGNL表达式 常见使用 
+#、 % 、$ 符号使用 	
+1） # 的 使用 
+用法一  # 代表 ActionContext.getContext() 上下文
+  <s:property value="#request.name" />  ------------>  ActionContext().getContext().getRequest().get("name");
+  #request
+  #session
+  #application
+  #attr
+  #parameters 
+
+用法二 ： 不写# 默认在 值栈中root中进行查找 
+   <s:property value="name" /> 在root中查找name属性 
+* 查询元素时，从root的栈顶元素 开始查找， 如果访问指定栈中元素    <s:property value="[1].name" />  访问栈中第二个元素name属性 
+* 访问第二个元素对象 <s:property value="[1].top" />
+
+用法三 ：进行投影映射 （结合复杂对象遍历 ）
+   1）集合的投影(只输出部分属性
+   <h1>遍历集合只要name属性</h1>
+	<s:iterator value="products.{name}" var="pname"> 
+		<s:property value="#pname"/>
+	</s:iterator>
+   2）遍历时，对数据设置条件 
+	<h1>遍历集合只要price大于1500商品</h1>
+	<s:iterator value="products.{?#this.price>1500}" var="product"> 
+		<s:property value="#product.name"/> --- <s:property value="#product.price"/>	
+	</s:iterator>
+   3）综合
+   <h1>只显示价格大于1500 商品名称</h1>
+	<s:iterator value="products.{?#this.price>1500}.{name}" var="pname"> 
+		<s:property value="#pname"/>
+	</s:iterator>   
+
+用法四： 使用#构造map集合 
+	经常结合 struts2 标签用来生成 select、checkbox、radio
+	<h1>使用#构造map集合 遍历</h1>
+	<s:iterator value="#{'name':'aaa','age':'20', 'hobby':'sport' }" var="entry">
+		key : <s:property value="#entry.key"/> , value:  <s:property value="#entry.value"/> <br/>
+	</s:iterator>
+
+2) %的使用 
+   用法一： 结合struts2 表单表单使用， 通过%通知struts， %{}中内容是一个OGNL表达式，进行解析 
+   <s:textfield name="username" value="%{#request.username}"/>
+   用法二： 设置ognl表达式不解析 %{'ognl表达式'}
+   <s:property value="%{'#request.username'}"/>
+
+3）$的使用 
+   用法一 ：用于在国际化资源文件中，引用OGNL表达式 
+	在properties文件 msg=欢迎您, ${#request.username}
+	在页面
+	    <s:i18n name="messages">
+			<s:text name="msg"></s:text>
+		</s:i18n>
+		* 自动将值栈的username 结合国际化配置信息显示 
+   用法二 ：在Struts 2配置文件中，引用OGNL表达式
+		<!-- 在Action 提供 getContentType方法 -->
+		<param name="contentType">${contentType}</param>		
+       *  ${contentType} 读取值栈中contentType数据，在Action提供 getContentType 因为Action对象会被压入值栈，
+	      contentType是Action属性，从值栈获得
+
+结论： #用于写ognl表达式获取数据，% 控制ognl表达式是否解析 ，$ 用于配置文件获取值栈的数据 
+
+==========================================================================================================================
+四、 struts2 标签库 
+tag-reference.html 就是 struts2 标签规范 
+1、 通用标签库 的学习 
+<s:property> 解析ognl表达式，设置默认值，设置内容是否HTML转义
+<s:set> 向四个数据范围保存数据 
+<s:iterator> 遍历值栈中数据 
+<s:if> <s:elseif> <s:else> 进行条件判断 -------- elseif 可以有多个 
+<s:url> 进行URL重写（追踪Session ） ，结合s:param 进行参数编码 
+	*   <s:url action="download" namespace="/" var="myurl">
+			<s:param name="filename" value="%{'MIME协议简介.txt'}"></s:param>
+		</s:url>
+		<s:property value="#myurl"/>
+<s:a> 对一个链接 进行参数编码 
+    * <s:a action="download" namespace="/" >下载MIME协议简介.txt
+			<s:param name="filename" value="%{'MIME协议简介.txt'}"></s:param>
+	  </s:a>
+
+OGNL 了解部分 ： 支持赋值操作和表达式串联 、 操作集合对象
+	 1） 在值栈中保存一个对象
+     <s:property value="price=1000,name='冰箱',getPrice()"/>  自动查找值栈中 price 和 name 属性 为其赋值	 
+	 2） ognl操作集合 
+		<s:property value="products[0].name"/> 访问集合第一个元素name属性 
+		<s:property value="map['name']"/> 访问map中key为name的值 
+		{} 直接构造List 元素、 #{} 直接构造 Map元素
+			<s:iterator value="{'aaa','bbb'}" var="s">
+				<s:property value="#s"/>
+			</s:iterator>
+			<s:iterator value="#{'ccc':'111','ddd':'222' }" var="entry">
+				<s:property value="#entry.key"/>
+			</s:iterator>
+  	 	
+		
+2、 UI标签库的学习 （Form标签）
+    使用struts2 form标签 好处 ： 支持数据回显 ， 布局排班（基于Freemarker 模板定义 ）
+	struts2 表单标签 value属性。 必须写 %{} 进行设值 
+******* 使用struts2表单标签前， 必须配置 StrutsPrepareAndExecuteFilter 
+  The Struts dispatcher cannot be found.  This is usually caused by using Struts tags without the associated filter. Struts tags are only usable when the request has passed through its servlet filter, which initializes the Struts dispatcher needed for this tag
+  
+<s:form> 表单标签 
+	<s:form action="regist" namespace="/" method="post" theme="xhtml">  ---   theme="xhtml" 默认布局样式
+<s:textfield> 生成 <input type="text" >	
+<s:password > 生成 <input type="password" >
+
+<s:submit type="submit" value="注册"/> 生成 <input type="submit" >
+<s:reset type="reset" value="重置" />	生成 <input type="reset" >
+
+* struts2 除了支持JSP之外，支持两种模板技术 Velocity (扩展名 .vm ) 、 Freemarker （扩展名 .ftl）
+	
+<s:textarea> 生成 <textarea> 多行文本框
+
+<s:checkboxlist> 生成一组checkbox
+	* 使用ognl构造 Map （看到值和提交值 不同时）
+	* <s:checkboxlist list="#{'sport':'体育','read':'读书','music':'音乐' }" name="hobby"></s:checkboxlist>
+<s:radio> 生成一组radio
+	* 使用 ognl构造 List  （看到内容和提交值 相同时）
+	* <s:radio list="{'男','女'}" name="gender"></s:radio>
+<s:select> 生成一个<select> 
+	* <s:select list="{'北京','上海','南京','广州'}" name="city"></s:select>
+
+============= struts2 开发 密码框 默认不回显 
+      <s:password name="password" id="password" showPassword="true"/>
+
+3、 页面元素主题设置 
+    default.properties  ----  struts.ui.theme=xhtml 设置struts2 页面元素使用默认主题 
+	                          struts.ui.templateSuffix=ftl 默认模板引擎 Freemarker 
+	修改主题 
+     方式一 ：<s:textfield name="username"  label="用户名“ theme="simple"></s:textfield> 只对当前元素有效
+	 方式二 ：<s:form  action="" method="post" namespace="/ui“    theme="simple"> 对form中所有元素有效 
+	 方式三 ： struts.xml 
+	     <constant name="struts.ui.theme" value="simple"></constant>  修改默认主题样式，页面所有元素都有效
+     优先级 ： 方式一 > 方式二  > 方式三 
+
+====================================================================================================================================
+小结 ：
+    1、 文件上传  （完成上传、设置上传参数【限制上传大小、扩展名】）
+    2、 文件下载 一个流 两个头 （不同浏览器附件名乱码解决 ）
+    3、 OGNL表达式 
+		值栈原理和OGNL对值栈数据访问 
+			* valueStack 何时创建（生命周期 ）
+			* valueStack内部结构 ，和ActionContext 关系 
+			* 在Action获取valueStack对象 
+			* 如何向 valueStack保存数据 
+			* 在JSP如何 通过struts2 标签显示值栈的内容
+			* Action元素何时加入值栈， Model对象何时加入值栈 
+			* Request对象装饰类 StrutsRequestWrapper 作用？ （重写getAttribute 访问request范围数据时，可以查找值栈）
+	    #、%、$的 使用 
+	        * # 解析ognl表达式，访问值栈内容
+			* # 投影 
+			* #{} 构造Map ---- {} 构造list
+			* % 控制OGNL表达式是否解析
+			* $ 配置文件中使用 xml配置、properties国际化配置 
+	4、 通用标签 
+		<s:property> <s:iterator> <s:set> <s:if> [s:elseif、s:else] 、<s:url> 、<s:a> 
+	5、 form标签 
+		* 使用struts2标签 编写注册页面 regist.jsp （设置主题样式）
+
+重点 ： 理解值栈 存储原理 ！！！！！
+
+		
+	
+	
+	
+	
+
+	
+
+
+		  
+   
+	
+	
+
+	
+
+ 
+
+   
+	
+ 
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

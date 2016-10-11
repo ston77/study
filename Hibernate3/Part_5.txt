@@ -1,0 +1,216 @@
+一、 Hibernate3.3/3.2 版本的使用 
+hibernate 技术最新版本 4.3 , 企业开发不会使用最新技术 
+课程 以hibernate3.6 版本进行学习 
+
+1、3.3和3.6目录结构类似
+documentation 文档
+lib jar包
+project 源码 
+
+hibernate3.jar 核心jar包 
+
+*** 3.3 zip包 没有 jpa的jar包 （jpa的jar包主要用于注解开发 ）
+
+整合log4j， slf4j 实现包 要和 hibernate 自带 slf4j的api 版本一致 
+
+2、 配置hbm 
+从 hibernate3.jar 获知 使用hibernate 版本 
+	* 如果使用maven ， 查看 pom.properties 
+
+3.3 导入 dtd
+	<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+3.6 导入 dtd 
+	<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+
+3、配置cfg.xml
+
+3.3 导入 dtd
+	<!DOCTYPE hibernate-configuration PUBLIC
+	"-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+	"http://hibernate.sourceforge.net/hibernate-configuration-3.0.dtd">
+
+3.6 导入 dtd
+	<!DOCTYPE hibernate-configuration PUBLIC
+	"-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+	"http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+
+4、 使用xml配置，编程时 3.3版本和3.6 版本没有任何区别 
+
+===========================================================================================================================
+注解配置 使用区别 
+3.6版本在zip包 集成注解类， 但是使用3.3时需要下载单独注解开发包 
+
+导入 hibernate-annotations.jar ------ 注解核心包 
+导入 ejb3-persistence.jar  ------------- JPA的接口 
+导入 hibernate-commons-annotations.jar ----- hibernate 注解实现类 
+
+********** 当hibernate.cfg.xml 使用 <mapping class="" /> 后，就不能使用传统 new Configuration() 
+org.hibernate.MappingException: An AnnotationConfiguration instance is required to use <mapping class="cn.itcast.domain.Book"/>
+
+使用注解开发 AnnotationConfiguration annotationConfiguration = new AnnotationConfiguration().configure();
+
+============================================================================================================================
+二、 MyEclipse 对 hibernate 框架支持 
+  hibernate 开发流程 
+     第一种 ，编写 Class， 进行hbm映射， 生成数据表 
+	 第二种 ，设计数据表，逆向构建，生成Class 和 hbm 映射 
+
+1、 MyEclipse 内置 数据库管理插件 
+    MyEclipse 内置  DataBase Explorer  数据库视图  
+配置一个新的Connection 
+
+2、 MyEclipse 内置 Hibernate 能力支持 ，为工程自动导入jar包 和 cfg的配置文件 
+	
+3、 MyEclipse 支持使用数据表 生成实体类 和hbm 映射 
+	* 使用该功能前，工程必须添加 hibernate 能力支持 
+生成hbm xml配置， 生成注解配置  
+
+============================================================================================================================
+三、 开发最常见hibernate问题 no Session 
+1、 编写工程 整合struts2 和 hibernate3 
+导入struts2 jar 、 web.xml 、struts.xml
+导入hibernate3 jar 、log4j.properties 、 hibernate.cfg.xml 
+
+2、 初始化2个Customer 和 每个Customer对应5个Order 
+
+3、 orders.jsp 
+<s:a action="listOrders" namespace="/">查询所有订单</s:a>
+
+********** 在OrderService 进行事务控制
+
+通过Action成员变量，将返回结果压入值栈，传递 orders.jsp显示 
+
+4、 如果需要在页面中，显示Order 关联 Customer 的姓名 
+	在Action 如果 访问Order 关联Customer 的name 
+	异常 ： org.hibernate.LazyInitializationException: could not initialize proxy - no Session
+	原因 ： 业务层关闭事务， web层获得Order 关联Customer 是延迟加载对象， 没有Session， 无法初始化  
+
+解决 ： 
+	第一种 ： 在Order.hbm.xml <many-to-one name="customer" class="cn.itcast.domain.Customer" column="customer_id"></many-to-one> 添加 lazy="false" 
+		** 每次查询订单时，都会去查询管理客户， 如果有时不需要Customer，造成性能损失 
+
+	第二种 ： 在业务层代码中，手动对 延迟对象初始化
+		for (Order order : orders) {
+			Hibernate.initialize(order.getCustomer());
+		}
+		** 在需要Customer对象时，手动初始化，避免每次都查询Customer， 比较灵活，但是会增加额外代码量 
+	
+	第三种 ： OpenSessionInView 
+		* 将事务开启在Web层 ，通常通过一个Filter 来实现的 
+		在jsp 显示数据时，Session没有断开， 不存在no Session 问题 
+	** OpenSessionInView 每次访问都要开启事务，访问结束后关闭事务，会存在Session长时间持有 ，如果系统访问量很大，使用该方式存在性能问题
+
+=====================================================================================================================
+四、 通过 struts2 内置 json插件， 编写ajax效果的订单查询 
+1、 使用orders_ajax.jsp 制作ajax 订单查询效果 
+	* 使用jquery 发起Ajax 请求
+	* 通过struts2 自带json 插件，处理查询结果 
+
+2、 使用struts2 json 插件， 基于值栈返回数据 
+	配置 <package> extends json-default 
+	配置 <result> type="json"
+
+3、 设置 返回root元素 
+	<result type="json">
+				<!-- 如果不指定root，默认将值栈顶端对象返回  -->
+				<param name="root">action</param>
+				<!-- 默认返回指定对象 中 所有get方法返回的数据 -->
+	</result>
+	异常： failed to lazily initialize a collection of role: cn.itcast.domain.Customer.orders, no session or session was closed
+
+通过配置json插件 includeProperties 属性，控制哪些属性返回 
+	<result type="json">
+				<!-- 如果不指定root，默认将值栈顶端对象返回  -->
+				<param name="root">action</param>
+				<!-- 默认返回指定对象 中 所有get方法返回的数据 -->
+				<!-- 控制哪些属性返回 ， includeProperties -->
+				<param name="includeProperties">
+					orders\[\d+\]\.id, 
+					orders\[\d+\]\.money,
+					orders\[\d+\]\.receiverinfo,
+					orders\[\d+\]\.customer\.name
+				</param>
+	</result>
+
+4、 遍历json数据 显示table中 
+
+===========================================================================================================================
+下午练习任务
+1、 hibernate练习知识点.doc 完成 （基础练习）
+	单表配置
+	多表配置
+	二级缓存
+	查询
+2、 二级缓存（配置使用、查询缓存、监控 ）
+3、 精华-Hibernate面试题及答案大集合.doc 
+4、 hibernate3.3 和 MyEclipse 工具使用 
+5、 noSession 问题解决 （订单查询）
+6、 Ajax 订单查询 
+
+	
+	
+		
+	
+		
+	
+		
+	
+	
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

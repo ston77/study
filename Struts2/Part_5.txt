@@ -1,0 +1,175 @@
+继续完成 struts2 综合练习 
+已经完成 ： 登陆功能、 员工添加、 组合条件列表查询、 员工删除 
+
+bug：添加员工时，如果校验失败，checkbox 没有回显 
+页面使用 checkboxlist 生成多个 <input checkbox> 提交爱好 ---- 提交数组 
+在domain的 User类中 private String interest; 
+* struts2 将数组动态拼接为字符串 ----------- 字符串无法完成 <c:checkboxlist> 回显 
+<s:checkboxlist list="{'看电影','旅游','健身','购物','睡觉'}" name="interest" value="%{interest.split(', ')}"></s:checkboxlist> 
+
+一、 员工信息详情查看 
+原理 ： 点击按钮，传递员工id，在服务器根据id查询， 将查询结果保存值栈，页面回显 
+
+1、查询按钮的改写
+<s:a action="user_view" namespace="/">
+	<s:param name="userID" value="#user.userID"></s:param>
+	<img src="${pageContext.request.contextPath}/images/button_view.gif" border="0" style="CURSOR: hand">
+</s:a>
+
+2、 Action查询数据结果，将结果被 getModel 引用 
+* 通过getModel将查询结果 传递jsp
+
+3、 使用model传递结果数据给jsp ，并不是栈顶model对象
+
+二、 员工简历下载
+1、 改造页面链接
+<s:a action="user_download" namespace="/" cssClass="cl_01">
+	<s:param name="userID" value="model.userID"></s:param>
+	<s:property value="model.filename"/>
+</s:a>
+传递下载简历员工id 给服务器
+
+2、 服务器接收id，查询员工简历文件，提供下载
+* 一个流 ，两个头信息 
+
+bug ： 查看无简历 员工信息时，出现异常
+org.apache.jasper.JasperException: Caught an exception while getting the property values of cn.itcast.user.web.action.UserAction@1264e3b - Class: ognl.OgnlRuntime File: OgnlRuntime.java Method: getMethodValue Line: 1440 - ognl/OgnlRuntime.java:1440:-1
+原因 ：<s:debug/>   ----- 调用值栈中所有 getXXX 方法 
+********** 解决：1） 不用 <s:debug/>  2）处理所有getXXX方法可能出错的情况 
+
+三、 员工修改功能 
+原理 ： 
+流程一 根据id查询员工信息，通过值栈将员工信息 显示form表单中 
+   1） 修改编辑按钮 
+       <s:a action="user_editview" namespace="/">
+			<s:param name="userID" value="#user.userID"></s:param>
+			<img src="${pageContext.request.contextPath}/images/i_edit.gif" border="0" style="CURSOR: hand">
+		</s:a>
+	2） 通过model引用，将结果数据传递jsp
+
+***** 编辑form 和 添加 form 基本一样， 区别编辑form 含有隐藏域，保存编辑员工id 	
+	
+流程二 提交修改form表单，完成员工信息修改 
+	1） 修改员工信息，form表单 是 上传表单， 用户可以选择简历 
+		如果用户选择了简历，在服务器端替换原有简历 
+		如果用户没选择简历，忽略对简历的修改 
+	
+    2） 上传新简历，替换原有简历 
+	存在简历无法删除问题 （因为有时简历被占用的 ）
+    解决 ： 如果不能及时删除简历， 可以在文件夹简历 简历文件删除标志文件 
+	
+    3） 校验 
+	@InputConfig 定义返回 不同视图 
+
+============================================================================================================================
+四、登陆校验拦截器 
+1、 自定义拦截器
+	获取Action对象添加错误信息
+	ActionSupport action = (ActionSupport) actionInvocation.getAction();
+	action.addActionError(action.getText("nologin"));
+2、 配置拦截器	
+		<interceptors>
+			<!-- 注册 -->
+			<interceptor name="login" class="cn.itcast.user.web.interceptor.LoginInterceptor"></interceptor>
+			<interceptor-stack name="myStack">
+				<interceptor-ref name="defaultStack"></interceptor-ref>
+				<interceptor-ref name="login"></interceptor-ref>
+			</interceptor-stack>
+		</interceptors>
+		
+		<!-- 设置默认拦截器栈 -->
+		<default-interceptor-ref name="myStack"></default-interceptor-ref>
+		
+		<!-- 如果未登陆 定义全局结果集 -->
+		<global-results>
+			<result  name="login">/login/login.jsp</result>
+		</global-results>
+***** 元素有顺序的！！！！！！！！
+
+问题：永远无法登陆！！！！！
+**** 通过拦截器参数设置，控制哪些方法 不被拦截  ---- 对user_login 不进行拦截
+
+在login.jsp
+<s:form action="user_login" method="post" theme="simple" namespace="/" id="loginAction_home" name="form1" target="_top">
+控制登陆后，整个页面跳转 
+
+五、 异常处理 
+如果发生错误，企业中 会第一时间 将错误转换为 自定义异常 错误 ---- 抛出 
+1、 自定义异常
+将出现通用异常，转换为 自定义异常
+	try {
+	  ...
+	} catch(){
+	   throw 自定义异常;
+	}
+2、 通常在拦截器 抓取自定义异常，记录日志， 提供友好页面 
+
+3、 自定义异常拦截，通常不拦截所有异常  ---- 通用异常页面
+		<global-exception-mappings>
+			<!-- 全局错误页面  -->
+			<exception-mapping result="error" exception="java.lang.Exception"></exception-mapping>
+		</global-exception-mappings>
+
+*** 通用错误页面 可以 与 自定义异常错误页面 不同 
+
+
+		
+	
+
+
+
+
+
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

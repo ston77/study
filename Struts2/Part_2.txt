@@ -1,0 +1,452 @@
+struts2 理论学习 时间 3天 
+第一天 ：快速入门 （流程） ----- 如何访问Action、如何进行结果页面跳转、
+第二天 ：请求数据处理（请求参数封装、类型转换、校验、国际化信息提示、拦截器）
+第三天 ：响应页面生成 
+
+实际场景： 表现层，获得请求参数，将请求参数封装到JavaBean对象，传递JavaBean对象 给业务层
+一、 Action 如何接受请求参数
+1、 struts2 和 MVC 定义关系 
+StrutsPrepareAndExecuteFilter : 控制器
+JSP : 视图
+Action : 可以作为模型，也可以是控制器 
+
+2、 struts2 Action 接受请求参数 ：属性驱动 和 模型驱动 
+第一种 ：Action 本身作为model对象，通过成员setter封装 （属性驱动 ）
+	页面：
+		用户名  <input type="text" name="username" /> <br/>
+	Action ： 
+		public class RegistAction1 extends ActionSupport {
+			private String username;
+			public void setUsername(String username) {
+				this.username = username;
+			}
+		}
+问题一： Action封装数据，会不会有线程问题 ？ 
+  * struts2 Action 是多实例 ，为了在Action封装数据  （struts1 Action 是单例的 ）
+问题二： 在使用第一种数据封装方式，数据封装到Action属性中，不可能将Action对象传递给 业务层 
+  * 需要再定义单独JavaBean ，将Action属性封装到 JavaBean 
+  
+		
+第二种 ：创建独立model对象，页面通过ognl表达式封装 （属性驱动）
+	页面： 
+		用户名  <input type="text" name="user.username" /> <br/>  ----- 基于OGNL表达式的写法
+	Action：
+		public class RegistAction2 extends ActionSupport {
+			private User user;
+			public void setUser(User user) {
+				this.user = user;
+			}
+
+			public User getUser() {
+				return user;
+			}
+		}
+		
+问题： 谁来完成的参数封装 
+	<interceptor name="params" class="com.opensymphony.xwork2.interceptor.ParametersInterceptor"/>
+
+第三种 ：使用ModelDriven接口，对请求数据进行封装 （模型驱动 ） ----- 主流
+	页面：
+		用户名  <input type="text" name="username" /> <br/>  
+	Action ：
+		public class RegistAction3 extends ActionSupport implements ModelDriven<User> {
+			private User user = new User(); // 必须手动实例化
+			public User getModel() {
+				return user;
+			}
+		}
+* struts2 有很多围绕模型驱动的特性 
+* <interceptor name="modelDriven" class="com.opensymphony.xwork2.interceptor.ModelDrivenInterceptor"/> 为模型驱动提供了更多特性
+
+对比第二种、第三种 ： 第三种只能在Action中指定一个model对象，第二种可以在Action中定义多个model对象 
+	<input type="text" name="user.username" /> 
+	<input type="text" name="product.info" /> 
+
+3、 封装复杂类型参数（集合类型 Collection 、 Map）
+1） 封装数据到Collection 对象 
+	页面：
+		产品名称 <input type="text" name="products[0].name" /><br/>
+	Action ：
+		public class ProductAction extends ActionSupport {
+			private List<Product> products;
+			
+			public List<Product> getProducts() {
+				return products;
+			}
+
+			public void setProducts(List<Product> products) {
+				this.products = products;
+			}
+		}
+2） 封装数据到Map 对象 
+	页面：
+		产品名称 <input type="text" name="map['one'].name" /><br/>  =======  one是map的键值
+	Action :
+		public class ProductAction2 extends ActionSupport {
+			private Map<String, Product> map;
+
+			public Map<String, Product> getMap() {
+				return map;
+			}
+
+			public void setMap(Map<String, Product> map) {
+				this.map = map;
+			}
+		}	
+	
+二、 参数封装过程中，数据类型转换问题 
+1、 struts2 内部提供大量类型转换器，用来完成数据类型转换问题 
+boolean 和 Boolean
+char和 Character
+int 和 Integer
+long 和 Long
+float 和 Float
+double 和 Double
+Date 可以接收 yyyy-MM-dd格式字符串
+数组  可以将多个同名参数，转换到数组中
+集合  支持将数据保存到 List 或者 Map 集合
+
+案例： 输入合法年龄和生日可以自动转换
+当输入abc 转换为 int类型 age时 
+		Caused by: java.lang.NoSuchMethodException: cn.itcast.struts2.demo3.CustomerAction.setAge([Ljava.lang.String;
+	分析: 输入20 ，转换 int类型20  --- setAge(int) 
+	      输入abc，转换int 出错 ---- setAge(String) ----- 报错方法不存在异常
+
+2、 自定义类型转换器 （了解）
+	1） 自定义类型转换器 
+		第一种 实现TypeConverter接口 
+			convertValue(java.util.Map<java.lang.String,java.lang.Object> context, java.lang.Object target, java.lang.reflect.Member member, java.lang.String propertyName, java.lang.Object value, java.lang.Class toType) 
+		第二种 继承 DefaultTypeConverter
+			convertValue(java.util.Map<java.lang.String,java.lang.Object> context, java.lang.Object value, java.lang.Class toType) 
+		第三种 继承 StrutsTypeConverter
+			convertFromString(java.util.Map context, java.lang.String[] values, java.lang.Class toClass)  --- 请求封装
+			convertToString(java.util.Map context, java.lang.Object o)   --- 数据回显 
+			
+	* 类型转换器 一直都是双向转换 
+		页面提交请求参数，封装到model --- 需要转换
+		model数据 需要在页面 回显  ---- 需要转换 
+		
+	2） 以 1990/10/10 为例，自定义日期转换器，完成转换
+		public Object convertValue(Map<String, Object> context, Object value,
+			Class toType) {
+			// 根据toType判断 是请求封装 还是 数据回显
+			DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd");
+			if (toType == Date.class) {
+				// 请求参数封装 （value是字符串）
+				String[] params = (String[]) value;
+				String strVal = params[0]; // 转换为 日期类型
+				try {
+					return dateFormat.parse(strVal);
+				} catch (ParseException e) {
+					e.printStackTrace();
+				}
+			} else {
+				// 回显(value是 Date)
+				Date date = (Date) value;
+				return dateFormat.format(date);
+			}
+
+			return null;
+		}
+		
+	3） 注册类型转换器 
+		局部注册 ： 只对当前Action有效 （针对属性） 
+		全局注册 ： 针对所有Action的日期类型有效 （针对类型 ）
+	
+	局部注册 ： 在Action类所在包 创建 Action类名-conversion.properties , 格式 ： 属性名称=类型转换器的全类名 
+	全局注册 ： 在src下创建 xwork-conversion.properties ，格式 ： 待转换的类型=类型转换器的全类名
+
+3、 类型转换中错误处理 
+通过分析拦截器作用，得知当类型转换出错时，自动跳转input视图 ，在input视图页面中 <s:fieldError/> 显示错误信息	
+* 在Action所在包中，创建 ActionName.properties，在局部资源文件中配置提示信息 ： invalid.fieldvalue.属性名= 错误信息
+
+三、 请求数据有效性校验 
+1、 校验的分类 ： 客户端数据校验 和 服务器端数据校验 
+客户端数据校验 ，通过JavaScript 完成校验 （改善用户体验，使用户减少出错 ）
+服务器数据校验 ，使用框架内置校验功能 （struts2 内置校验功能 ） ----- 必须的 
+
+2、 struts2 支持校验方式 
+代码校验 ：在服务器端通过编写java代码，完成数据校验 
+配置校验 ：XML配置校验（主流） 和 注解配置校验 
+
+3、 手工校验 （代码校验）
+	步骤一： 封装数据 
+	步骤二： 实现校验Action ，必须继承ActionSupport 类 
+	步骤三： 覆盖validate方法，完成对Action的业务方法 数据校验 
+		通过代码逻辑判断参数是否有效，如果参数非法 ， this.addFieldError (ActionSupport提供)
+		workflow拦截器 跳转回 input页面
+	步骤四： 在jsp中 通过 <s:fieldError/> 显示错误信息 
+
+* validate方法会对Action中所有业务方法进行校验，如果只想校验某一个方法 	： validate方法名()
+
+4、 XML配置方式 数据校验 （企业主流校验）
+	代码校验 不适用于 大型项目， 流程数据复杂时，开发量和维护量 都会很大 
+
+xml配置校验原理 ： 将很多校验规则代码已经写好，只需要在xml中定义数据所使用校验规则就可以了 
+
+	步骤一 ：编写jsp
+	步骤二 ：编写Action 继承ActionSupport 或者 实现 Validateable 接口 
+	步骤三 ：封装请求参数 
+			* 使用xml校验 必须提供get方法
+	步骤四 ：编写校验规则xml文件 
+		在Action所在包 编写 Action类名-validation.xml 对Action所有业务方法进行校验 
+	引入DTD 
+		------ xwork-core-2.3.7.jar 中 xwork-validator-1.0.3.dtd 
+		<!DOCTYPE validators PUBLIC
+  		"-//Apache Struts//XWork Validator 1.0.3//EN"
+  		"http://struts.apache.org/dtds/xwork-validator-1.0.3.dtd">
+	内置校验器定义文件 
+		xwork-core-2.3.7.jar 中 /com/opensymphony/xwork2/validator/validators/default.xml
+
+内建校验器
+* required (必填校验器,要求被校验的属性值不能为null)
+* requiredstring (必填字符串校验器,要求被校验的属性值不能为null，并且长度大于0,默认情况下会对字符串去前后空格)
+* stringlength (字符串长度校验器，要求被校验的属性值必须在指定的范围内，否则校验失败,minLength参数指定最小长度，maxLength参数指定最大长度，trim参数指定校验field之前是否去除字符串前后的空格)
+* regex (正则表达式校验器，检查被校验的属性值是否匹配一个正则表达式，expression参数指定正则表达式，caseSensitive参数指定进行正则表达式匹配时，是否区分大小写,默认值为true)
+* int(整数校验器，要求field的整数值必须在指定范围内，min指定最小值，max指定最大值)
+* double(双精度浮点数校验器,要求field的双精度浮点数必须在指定范围内,min指定最小值,max指定最大值)
+* fieldexpression (字段OGNL表达式校验器,要求field满足一个ognl表达式，expression参数指定ognl表达式,该逻辑表达式基于ValueStack进行求值,返回true时校验通过，否则不通过)
+* email(邮件地址校验器，要求如果被校验的属性值非空，则必须是合法的邮件地址)
+* url(网址校验器,要求如果被校验的属性值非空,则必须是合法的url地址)
+* date(日期校验器,要求field的日期值必须在指定范围内,min指定最小值,max指定最大值)
+		
+案例
+required  必填校验器
+<field-validator type="required">
+       <message>性别不能为空!</message>
+</field-validator>
+
+requiredstring  必填字符串校验器
+<field-validator type="requiredstring">
+       <param name="trim">true</param>
+       <message>用户名不能为空!</message>
+</field-validator>
+
+stringlength：字符串长度校验器
+<field-validator type="stringlength">
+	<param name="maxLength">10</param>
+	<param name="minLength">2</param>
+	<param name="trim">true</param>
+	<message><![CDATA[产品名称应在2-10个字符之间]]></message>
+</field-validator>
+
+int：整数校验器
+<field-validator type="int">
+	<param name="min">1</param>
+	<param name="max">150</param>
+	<message>年龄必须在1-150之间</message>
+</field-validator>
+
+date: 日期校验器
+<field-validator type="date">
+	<param name="min">1900-01-01</param>
+	<param name="max">2050-02-21</param>
+	<message>生日必须在${min}到${max}之间</message>
+</field-validator>
+
+url:  网络路径校验器
+<field-validator type="url">
+	<message>传智播客的主页地址必须是一个有效网址</message>
+</field-validator>
+
+email：邮件地址校验器
+<field-validator type="email">
+	<message>电子邮件地址无效</message>
+</field-validator>
+
+regex：正则表达式校验器
+<field-validator type="regex">
+     <param name="expression"><![CDATA[^13\d{9}$]]></param>
+     <message>手机号格式不正确!</message>
+</field-validator>
+
+fieldexpression : 字段表达式校验
+<field-validator type="fieldexpression">
+       <param name="expression"><![CDATA[(password==repassword)]]></param>
+       <message>两次密码输入不一致</message>
+</field-validator>
+
+============================= 如何对指定的方法校验 ？？？ 格式  Action类名-ActionName(<action>元素name属性)-validation.xml 
+	例如 ： 校验AddCustomerAction中execute方法  配置 <action name="addcustomer" .../> 校验文件名字： AddCusotmerAction-addcustomer-validation.xml 
+
+5、 自定义校验规则 (了解 )
+   步骤一： 自定义校验器 必须实现 Validator  接口
+		通常自定义校验器 继承 ValidatorSupport 和 FieldValidatorSupport  
+		* ValidatorSupport 针对不是一个输入字段 (两个密码一致)
+		* FieldValidatorSupport 针对是一个输入字段  (用户名非空)
+	步骤二： 注册校验器
+		在工程的src下新建validators.xml文件
+		引入 xwork-core-2.3.7.jar 中 xwork-validator-config-1.0.dtd  
+	步骤三 ：使用校验器
+		在Action所有包 创建Action类名-validation.xml 
+
+**** 实际开发中很少用到自定义校验器 
+
+四、 国际化信息显示 
+1、 国际化原理 ？ 什么是国际化 ？ 
+	同一款软件 可以为不同用户，提供不同语言界面  ---- 国际化软件
+	需要一个语言资源包（很多properties文件，每个properties文件 针对一个国家或者语言 ，通过java程序根据来访者国家语言，自动读取不同properties文件 ）
+	
+2、 资源包编写 
+	properties文件命名 ：  基本名称_语言（小写）_国家（大写）.properties 
+例如 ：
+	messages_zh_CN.properties 中国中文
+	messages_en_US.properties 美国英文
+
+3、 ResourceBundle 根据不同Locale（地域信息），读取不同国家 properties文件
+ResourceBundle bundle = ResourceBundle.getBundle("messages", Locale.US); 
+
+4、 struts2 框架国际化配置 
+第一种 全局国际化信息文件 （所有Action都可以使用 ） ------- 最常用 
+	* properties文件可以在任何包中
+	* 需要在struts.xml 中配置全局信息文件位置 
+	
+struts.xml
+	<constant name="struts.custom.i18n.resources" value="messages"></constant>   messages.properties 在src根目录
+	<constant name="struts.custom.i18n.resources" value="cn.itcast.resources.messages"></constant>   messages.properties 在 cn.itcast.resources 包
+
+国际化信息 
+	在Action中使用  ： this.getText("msg"); 
+	在jsp中使用  ：<s:text name="msg" />
+	在配置文件中（校验xml） ： <message key="agemsg"></message>
+	
+第二种 Action范围信息文件 （只能在某个Action中使用 ）
+	数据只能在对应Action中使用，在Action类所在包 创建 Action类名.properties  --------- 无需配置 
+
+第三种 package范围信息文件 （package中所有Action都可以使用 ）
+	数据对包 （包括子包）中的所有Action 都有效 ， 在包中创建 package.properties ----- 无需配置 
+
+第四种 临时信息文件 （主要在jsp中 引入国际化信息 ）
+	在jsp指定读取 哪个properties文件 
+	<s:i18n name="cn.itcast.struts2.demo7.package">
+		<s:text name="customer"></s:text>
+	</s:i18n>
+
+*** 向信息中传递参数  {0} {1} ------------ MessageFormat 动态消息文本 
+	this.getText("required", new String[] { "用户名" });
+
+===============================================================================================================================================
+五、 自定义拦截器 
+	拦截器 的使用 ，源自Spring AOP（面向切面编程）思想 
+	拦截器 采用 责任链 模式 
+		*  在责任链模式里,很多对象由每一个对象对其下家的引用而连接起来形成一条链。
+	    *  责任链每一个节点，都可以继续调用下一个节点，也可以阻止流程继续执行 
+		
+在struts2 中可以定义很多个拦截器，将多个拦截器按照特定顺序 组成拦截器栈 （顺序调用 栈中的每一个拦截器 ）
+
+1、 struts2 所有拦截器 都必须实现 Interceptor 接口 
+2、 AbstractInterceptor 类实现了 Interceptor 接口. 并为 init, destroy 提供了一个空白的实现
+
+所有实际开发中，自定义拦截器 只需要 继承 AbstractInterceptor类， 提供 intercept 方法实现 
+
+3、 常用struts2 拦截器
+	<interceptor-ref name="modelDriven"/> 模型驱动
+	<interceptor-ref name="fileUpload"/> 文件上传
+	<interceptor-ref name="params"> 参数解析封装 
+	<interceptor-ref name="conversionError"/> 类型转换错误
+	<interceptor-ref name="validation"> 请求参数校验
+	<interceptor-ref name="workflow"> 拦截跳转 input 视图
+
+案例 ： 登陆，对其它Action访问  通过自定义拦截器 进行权限控制 
+	导入jar包 （struts2 jar、c3p0、 dbutils、 mysql驱动）
+	web.xml 
+	struts.xml
+	JDBCUtils 工具类
+
+第一步 ： 编写index.jsp 提供 图书增删改查 四个功能 
+   编写BookAction ，提供四个业务方法 
+   
+第二步： 完成登陆功能    
+
+第三步 ：必须要登陆 才能进行图书管理 
+	使用Filter 进行权限控制 ---- 过滤所有web请求 （所有web资源访问）
+	使用拦截器 进行权限控制 ---- 主要拦截对Action访问  （不能拦截JSP）
+
+定义拦截器 继承AbstractInterceptor 
+
+配置拦截器 
+	方式一
+		<!-- 注册拦截器 -->
+		<interceptors>
+			<interceptor name="privilege" class="cn.itcast.interceptor.PrivilegeInterceptor"></interceptor>
+		</interceptors>
+		<action name="book_*" class="cn.itcast.action.BookAction" method="{1}" >
+			<!-- 使用拦截器 -->
+			<!-- 当使用自定义拦截器 后，默认拦截器 就会失效  -->
+			<interceptor-ref name="defaultStack"></interceptor-ref>
+			<interceptor-ref name="privilege"></interceptor-ref>
+		</action>
+	方式二
+		<!-- 注册拦截器 -->
+		<interceptors>
+			<interceptor name="privilege" class="cn.itcast.interceptor.PrivilegeInterceptor"></interceptor>
+			<!-- 自定义拦截器栈 -->
+			<interceptor-stack name="privilegeStack">
+				<interceptor-ref name="defaultStack"></interceptor-ref>
+				<interceptor-ref name="privilege"></interceptor-ref>
+			</interceptor-stack>
+		</interceptors>
+		
+		<!-- 设置当前包 所有Action 都使用 自定义拦截器栈 -->
+		<default-interceptor-ref name="privilegeStack"></default-interceptor-ref>
+	
+小结： 
+   1、 参数封装
+   2、 请求参数xml校验
+   3、 国际化文件信息显示
+  
+综合案例： 自定义拦截器 
+
+*** 自定义类型转换、自定义校验规则 （了解 ）
+
+  
+	
+	
+	
+	
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
